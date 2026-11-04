@@ -4,6 +4,7 @@ import {
   JOURNAL_LIMIT,
   journalHelp,
   JOURNAL_COMMANDS,
+  MAJOR_ARCANA,
   mentionOptions,
   hexName,
   isAutomatedJournalEntry,
@@ -59,6 +60,25 @@ function diceSpans(entry) {
     }
   }
   return spans;
+}
+
+function appendAbstractCard(node, entry) {
+  if (entry.kind !== 'abstract') return;
+  const title = entry.text.trim().split('\n')[0].replace(/\.$/, '');
+  const card = MAJOR_ARCANA.find((name) => title === `Abstract: ${name}`);
+  if (!card) return;
+  const frame = document.createElement('span');
+  frame.className = 'hp-journal-card';
+  const image = document.createElement('img');
+  image.src = `/images/major-arcana/${card.toLowerCase().replaceAll(' ', '-')}.png`;
+  frame.style.setProperty('--journal-card-image', `url("${image.getAttribute('src')}")`);
+  image.alt = '';
+  image.width = 94;
+  image.height = 194;
+  image.loading = 'lazy';
+  image.addEventListener('error', () => frame.remove(), { once: true });
+  frame.append(image);
+  node.prepend(frame);
 }
 
 export function createPartyJournal(
@@ -355,7 +375,10 @@ export function createPartyJournal(
     if (node.dataset.entryId === inactiveEntryId) node.classList.add('is-action-complete');
     const text = node.querySelector('.hp-journal-entry-text');
     if (help) appendHelp(text);
-    else appendText(text, entry);
+    else {
+      appendAbstractCard(node, entry);
+      appendText(text, entry);
+    }
     node.querySelector('[data-entry-action="regenerate"]').hidden = ![
       'oracle',
       'abstract',

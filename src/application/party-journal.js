@@ -17,7 +17,7 @@ export const JOURNAL_COMMANDS = [
   })),
 ];
 export const ORACLE_ANSWERS = ['No, and…', 'No', 'No, but…', 'Yes, but…', 'Yes', 'Yes, and…'];
-const MAJOR_ARCANA = [
+export const MAJOR_ARCANA = [
   'The Fool',
   'The Magician',
   'The High Priestess',

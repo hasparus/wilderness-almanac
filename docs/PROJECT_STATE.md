@@ -135,6 +135,19 @@ visited without moving the camera. Find party explicitly focuses the token.
 Mobile panels begin closed below the map; desktop supports remembered sizing and
 folding. Unsaved forms guard navigation and selection changes.
 
+Party Journal abstract entries derive their card image from the saved Major Arcana
+name, including older entries without command metadata. Abstract entries have
+two columns with shared spacing and padding: 94 by 194 CSS pixel artwork on the
+left, top-aligned result text on the right, and actions at the lower right.
+Artwork retains pixelated scaling. Local PNGs belong in
+`public/images/major-arcana/`, using lowercase card names separated by hyphens.
+A light, chroma-limited color derived from the UI surface hue supplies a 33% CSS
+multiply wash, masked by the same PNG's alpha. One isolated wrapper keeps the
+tint within the artwork; black pixels remain black.
+Unavailable images fall back to the saved text; artwork adds no campaign fields
+or backend requests. The 22 card images are by YY Game and retain their
+[separate usage terms](../public/images/major-arcana/README.md).
+
 Fog derives visited, visible-unvisited and undiscovered presentation from saved
 visits; structural editing requires fog off. See [fog rules](FOG_OF_WAR.md).
 The UI theme is independent of map palette and lighting. Appearance choices stage

@@ -49,4 +49,5 @@ For code contributions, read the [development guide](docs/DEVELOPMENT.md) and [A
 
 [GNU AGPLv3](LICENSE). Built with Three.js and Vite.
 [Geist fonts](public/fonts/README.md) use the SIL OFL; [Pixelarticons](public/icons/README.md) use MIT.
+[Major Arcana artwork](public/images/major-arcana/README.md) is by YY Game and retains its separate usage terms.
 Map generation draws inspiration from [Red Blob Games](https://www.redblobgames.com/maps/mapgen4/); visuals from Thronefall.

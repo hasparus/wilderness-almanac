@@ -30,7 +30,7 @@ Hex exploration and the separate hex journal are not available yet.
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `/help`                         | Show commands and mentions until the next journal entry.                                                         |
 | `/clear`                        | Across all periods, remove rolls and draws without notes or questions; dismiss help. Keep notes and travel logs. |
-| `/abstract`                     | Draw a Major Arcana prompt.                                                                                      |
+| `/abstract`                     | Draw a Major Arcana prompt with its card artwork.                                                                |
 | `/oracle [modifier] [question]` | Ask a yes/no oracle. Both arguments are optional: `/oracle +1 Is the bridge guarded?`                            |
 | `/d4`                           | Roll a four-sided die.                                                                                           |
 | `/d6`                           | Roll a six-sided die.                                                                                            |
