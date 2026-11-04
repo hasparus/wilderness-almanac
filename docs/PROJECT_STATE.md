@@ -136,8 +136,12 @@ Mobile panels begin closed below the map; desktop supports remembered sizing and
 folding. Unsaved forms guard navigation and selection changes.
 
 Party Journal artwork derives from saved result text, including older entries
-without command metadata. Abstract and oracle entries have two columns with shared
-spacing and padding: artwork on the left, top-aligned result text on the right,
+without command metadata. The newest abstract and newest oracle entry across the
+campaign show artwork by default; older entries start as compact text. Clicking
+an entry, or using its keyboard disclosure, toggles artwork. Manual choices last
+while that campaign remains open and are not saved in campaign data. Entry actions
+and mentions do not toggle the artwork. Expanded entries have two columns with
+shared spacing and padding: artwork on the left, top-aligned result text on the right,
 and actions at the lower right. A shared 94-pixel artwork column aligns result
 text across both kinds. Cards render at 94 by 194 CSS pixels; oracle dice at 64 by
 64, centered in that column. The die's top face matches the displayed result

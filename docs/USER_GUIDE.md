@@ -20,6 +20,9 @@ Fog of war hides unexplored areas; turn it off to edit the map.
 
 Use the Party Journal for notes, dice rolls and prompts.
 
+The latest abstract draw and oracle roll show their artwork. Older results are
+text-only until clicked; click again to collapse the artwork.
+
 Organize the journal by week, day or session. Mention hexes with `$`,
 the party with `@`, and periods with `#`. Movement is logged automatically.
 Hex exploration and the separate hex journal are not available yet.

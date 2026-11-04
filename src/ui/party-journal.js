@@ -124,6 +124,7 @@ export function createPartyJournal(
   const listen = (target, type, callback) =>
     target.addEventListener(type, callback, { signal: listeners.signal });
   const drafts = new Map();
+  const artworkOverrides = new Map();
   let state,
     campaignId,
     journal,
@@ -389,7 +390,26 @@ export function createPartyJournal(
       node.append(paragraph);
     }
   }
-  function entryNode(entry, help = false) {
+  function artworkDisclosure(node, entry, defaultOpen) {
+    if (!node.querySelector('.hp-journal-artwork')) return;
+    const disclosure = document.createElement('details'),
+      summary = document.createElement('summary');
+    disclosure.className = 'hp-journal-disclosure';
+    disclosure.open = artworkOverrides.get(entry.id) ?? defaultOpen;
+    summary.className = 'hp-journal-entry-summary';
+    // Summary content stays phrasing content, including the existing action buttons.
+    for (const child of [...node.children]) {
+      if (child.tagName !== 'DIV') continue;
+      const inline = document.createElement('span');
+      for (const { name, value } of child.attributes) inline.setAttribute(name, value);
+      inline.append(...child.childNodes);
+      child.replaceWith(inline);
+    }
+    summary.append(...node.children);
+    disclosure.append(summary);
+    node.replaceChildren(disclosure);
+  }
+  function entryNode(entry, help = false, defaultArtworkOpen = false) {
     const node = cloneTemplate('party-journal-entry-template').firstElementChild;
     node.classList.add(`hp-journal-${entry.kind}`);
     node.dataset.entryId = help ? 'help' : String(entry.id);
@@ -408,6 +428,7 @@ export function createPartyJournal(
     ].includes(entry.kind);
     node.querySelector('[data-entry-action="edit"]').hidden = entry.kind !== 'note';
     node.querySelector('[data-entry-action="delete"]').hidden = isAutomatedJournalEntry(entry);
+    artworkDisclosure(node, entry, defaultArtworkOpen);
     return node;
   }
   function paint(bottom = false, preserve = false) {
@@ -433,7 +454,14 @@ export function createPartyJournal(
     el('older').hidden = next || shown >= entries.length;
     el('new-week').hidden = !next;
     entriesHost.hidden = next;
-    const nodes = next ? [] : entries.slice(-shown).map((entry) => entryNode(entry));
+    const allEntries = state.campaign.journal ?? [];
+    const latestArtwork = new Set([
+      allEntries.findLast((entry) => entry.kind === 'abstract')?.id,
+      allEntries.findLast((entry) => entry.kind === 'oracle')?.id,
+    ]);
+    const nodes = next
+      ? []
+      : entries.slice(-shown).map((entry) => entryNode(entry, false, latestArtwork.has(entry.id)));
     if (!next && !entries.length) {
       const node = document.createElement('p');
       node.className = 'hp-journal-empty';
@@ -506,8 +534,24 @@ export function createPartyJournal(
     if (event.target.closest('.hp-journal-entry')) clearInactive();
   });
   listen(entriesHost, 'pointerdown', (event) => {
-    if (!event.target.closest('button'))
-      event.target.closest('.hp-journal-entry')?.focus({ preventScroll: true });
+    if (event.target.closest('button')) return;
+    const row = event.target.closest('.hp-journal-entry');
+    (row?.querySelector('.hp-journal-entry-summary') ?? row)?.focus({ preventScroll: true });
+  });
+  function toggleArtwork(row) {
+    const disclosure = row?.querySelector('.hp-journal-disclosure');
+    if (!disclosure || isBusy()) return;
+    disclosure.open = !disclosure.open;
+    artworkOverrides.set(Number(row.dataset.entryId), disclosure.open);
+  }
+  listen(entriesHost, 'keydown', (event) => {
+    if (
+      !event.target.matches('.hp-journal-entry:has(.hp-journal-disclosure)') ||
+      !['Enter', ' '].includes(event.key)
+    )
+      return;
+    event.preventDefault();
+    if (!event.repeat) toggleArtwork(event.target);
   });
   function editableEntry(entry) {
     let text = '',
@@ -537,6 +581,7 @@ export function createPartyJournal(
   listen(entriesHost, 'click', async (event) => {
     const button = event.target.closest('button[data-entry-action]');
     if (button && !isBusy()) {
+      event.preventDefault();
       const row = button.closest('.hp-journal-entry'),
         id = row.dataset.entryId;
       const entry =
@@ -593,8 +638,15 @@ export function createPartyJournal(
     }
     const mention = event.target.closest('button[data-mention-type]');
     if (mention && !isBusy()) {
+      event.preventDefault();
       if (mention.dataset.mentionType === 'week') goToWeek(mention.dataset.key);
       else onMention(mention.dataset.mentionType, mention.dataset.key);
+      return;
+    }
+    const row = event.target.closest('.hp-journal-entry');
+    if (!event.target.closest('button') && row?.querySelector('.hp-journal-disclosure')) {
+      event.preventDefault();
+      toggleArtwork(row);
     }
   });
   function submit(text, refs = [], clear = false) {
@@ -710,6 +762,7 @@ export function createPartyJournal(
       campaignId = next.campaign.id;
       displayedIncrement = nextIncrement;
       if (changedCampaign) {
+        artworkOverrides.clear();
         viewedWeek = nextWeek;
         currentWeek = nextWeek;
         shown = PAGE_SIZE;

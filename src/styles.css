@@ -1696,7 +1696,30 @@
   .hp-journal-oracle {
     --journal-artwork-width: 64px;
   }
-  .hp-journal-entry:has(> .hp-journal-artwork) {
+  .hp-journal-entry:has(> .hp-journal-disclosure) {
+    display: block;
+    padding: 0;
+  }
+  .hp-journal-entry-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--space-2xs);
+    padding: var(--space-2xs) var(--space-xs);
+    list-style: none;
+    cursor: pointer;
+    &::-webkit-details-marker {
+      display: none;
+    }
+    &:focus-visible {
+      outline: var(--focus-width) solid var(--c-accent);
+      outline-offset: calc(-1 * var(--focus-width));
+    }
+  }
+  .hp-journal-disclosure:not([open]) .hp-journal-artwork {
+    display: none;
+  }
+  .hp-journal-disclosure[open] > .hp-journal-entry-summary:has(> .hp-journal-artwork) {
     grid-template-columns: 94px minmax(0, 1fr);
     grid-template-rows: auto 1fr;
     gap: var(--space-s);
