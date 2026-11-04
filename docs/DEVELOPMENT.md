@@ -115,5 +115,6 @@ Keep it working when changing shared renderer or scene-generation modules.
 
 Keep the application AGPLv3 license and bundled font/icon licenses and attribution.
 Major Arcana images retain [YY Game's separate usage terms](../public/images/major-arcana/README.md).
+Oracle dice retain [Ävos Grosimbourg's separate usage terms](../public/images/oracle-dice/README.md).
 User instructions belong in the README/user guide; implementation contracts belong
 in these maintainer documents, without chronological task logs or stale test counts.

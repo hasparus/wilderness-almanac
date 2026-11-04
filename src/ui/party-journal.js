@@ -62,23 +62,44 @@ function diceSpans(entry) {
   return spans;
 }
 
-function appendAbstractCard(node, entry) {
-  if (entry.kind !== 'abstract') return;
-  const title = entry.text.trim().split('\n')[0].replace(/\.$/, '');
-  const card = MAJOR_ARCANA.find((name) => title === `Abstract: ${name}`);
-  if (!card) return;
+function appendJournalArtwork(node, { src, className, width, height }) {
   const frame = document.createElement('span');
-  frame.className = 'hp-journal-card';
+  frame.className = `hp-journal-artwork ${className}`;
   const image = document.createElement('img');
-  image.src = `/images/major-arcana/${card.toLowerCase().replaceAll(' ', '-')}.png`;
-  frame.style.setProperty('--journal-card-image', `url("${image.getAttribute('src')}")`);
+  image.src = src;
+  frame.style.setProperty('--journal-artwork-image', `url("${src}")`);
   image.alt = '';
-  image.width = 94;
-  image.height = 194;
+  image.width = width;
+  image.height = height;
   image.loading = 'lazy';
   image.addEventListener('error', () => frame.remove(), { once: true });
   frame.append(image);
   node.prepend(frame);
+}
+
+function appendAbstractCard(node, entry) {
+  if (entry.kind !== 'abstract') return;
+  const title = entry.text.trim().split('\n')[0].replace(/\.$/, '');
+  const card = MAJOR_ARCANA.find((name) => title === `Abstract: ${name}`);
+  if (card)
+    appendJournalArtwork(node, {
+      src: `/images/major-arcana/${card.toLowerCase().replaceAll(' ', '-')}.png`,
+      className: 'hp-journal-card',
+      width: 94,
+      height: 194,
+    });
+}
+
+function appendOracleDie(node, entry) {
+  if (entry.kind !== 'oracle') return;
+  const face = diceSpans(entry)[0]?.label;
+  if (/^[1-6]$/.test(face ?? ''))
+    appendJournalArtwork(node, {
+      src: `/images/oracle-dice/d6-${face}.png`,
+      className: 'hp-journal-die',
+      width: 64,
+      height: 64,
+    });
 }
 
 export function createPartyJournal(
@@ -377,6 +398,7 @@ export function createPartyJournal(
     if (help) appendHelp(text);
     else {
       appendAbstractCard(node, entry);
+      appendOracleDie(node, entry);
       appendText(text, entry);
     }
     node.querySelector('[data-entry-action="regenerate"]').hidden = ![

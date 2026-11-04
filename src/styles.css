@@ -1693,14 +1693,18 @@
       text-align: center;
     }
   }
-  .hp-journal-abstract:has(> .hp-journal-card) {
+  .hp-journal-oracle {
+    --journal-artwork-width: 64px;
+  }
+  .hp-journal-entry:has(> .hp-journal-artwork) {
     grid-template-columns: 94px minmax(0, 1fr);
     grid-template-rows: auto 1fr;
     gap: var(--space-s);
     padding: var(--space-s);
-    & .hp-journal-card {
+    & .hp-journal-artwork {
       grid-column: 1;
       grid-row: 1 / span 2;
+      justify-self: center;
     }
     & .hp-journal-entry-text {
       grid-column: 2;
@@ -1716,11 +1720,11 @@
       justify-content: end;
     }
   }
-  .hp-journal-card {
+  .hp-journal-artwork {
     position: relative;
     isolation: isolate;
     display: block;
-    width: 94px;
+    width: var(--journal-artwork-width, 94px);
     max-width: 100%;
     image-rendering: pixelated;
     & img {
@@ -1735,9 +1739,12 @@
       background: oklch(from var(--c-surface) 0.8 min(0.12, calc(c * 8)) h);
       opacity: 0.33;
       mix-blend-mode: multiply;
-      mask: var(--journal-card-image) center / 100% 100% no-repeat;
+      mask: var(--journal-artwork-image) center / 100% 100% no-repeat;
       pointer-events: none;
     }
+  }
+  .hp-journal-die img {
+    filter: grayscale(1);
   }
   .hp-journal-entry-controls {
     display: flex;
