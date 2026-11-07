@@ -31,6 +31,12 @@ level-1 town, then clockwise from north mountain/nest (4), dense pine forest (3)
 light ash forest/abbey (2), ocean (0), meadow (0), vineyards/encampment (1).
 It uses the same editing, dressing, fog, party and rendering paths.
 
+The website footer has a separate 14-hex scene at `/embed/footer/`, prepared at
+build time from an explicit narrow coastal-to-mountain trail. It shares ordinary
+dressing and Pixelart rendering without adding a campaign seed or persistence
+format. Its selection is independent of the hero; their time of day is shared
+by the website.
+
 ## Generation rules
 
 Each stage uses a seed-derived named random stream. String seeds of 1-128 characters are accepted, with surrounding whitespace trimmed. The world is JSON-compatible and has schema/generator versions. Dressing has a separate variant and placement seed per cell, so its regeneration cannot consume geography randomness.

@@ -3,16 +3,20 @@ import { prepareMap } from '../src/generation/presentation.js';
 import { hexName } from '../src/application/hex-description.js';
 import { palettes } from '../src/palette.js';
 import { worldPosition } from '../src/generation/hex.js';
+import { footerScene } from './footer-scene.mjs';
 
 // Prepare the fixed scene in Node, keeping the world generator out of the embed.
 export function heroScenePlugin() {
   const id = '\0virtual:hero-scene';
+  const footerId = '\0virtual:footer-scene';
   return {
     name: 'wilderness-hero-scene',
     resolveId(source) {
       if (source === 'virtual:hero-scene') return id;
+      if (source === 'virtual:footer-scene') return footerId;
     },
     load(source) {
+      if (source === footerId) return `export default ${JSON.stringify(footerScene())};`;
       if (source !== id) return;
       const world = generateWorld('heliotest');
       const town = world.cells.find((cell) => cell.key === '0,0');

@@ -10,7 +10,7 @@ body {
     14px/1.25 system-ui,
     sans-serif;
 }
-#hero-scene {
+[data-embed-map] {
   position: absolute;
   inset: 0;
   touch-action: pan-y pinch-zoom;

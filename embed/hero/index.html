@@ -8,12 +8,14 @@
     <link rel="stylesheet" href="/src/hero-embed.css" />
   </head>
   <body>
-    <main id="hero-scene" aria-label="Seven-hex Heliotest map"></main>
+    <main id="hero-scene" data-embed-map aria-label="Seven-hex Heliotest map"></main>
     <label class="keyboard-hexes">
       Select a hex
-      <select id="hero-hex" aria-label="Select a hex"></select>
+      <select id="hero-hex" data-embed-select aria-label="Select a hex"></select>
     </label>
-    <output id="hero-selection" class="visually-hidden" aria-live="polite">Heliotest</output>
+    <output id="hero-selection" data-embed-selection class="visually-hidden" aria-live="polite"
+      >Heliotest</output
+    >
     <script type="module" src="/src/hero-embed.js"></script>
   </body>
 </html>

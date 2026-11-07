@@ -18,7 +18,7 @@ work additionally needs `npm ci --prefix server`; see [self-hosting](SELF_HOSTIN
 | `npm run format:check`   | Check Prettier formatting                                                                    |
 | `npm test`               | Frontend Node tests                                                                          |
 | `npm run test:server`    | Backend auth, SQLite, proxy and backup tests                                                 |
-| `npm run build`          | Build application and website hero embed                                                     |
+| `npm run build`          | Build application and website map embeds                                                     |
 | `npm run preview`        | Serve the production build                                                                   |
 | `npm run test:e2e`       | Production-build desktop and mobile browser tests; build first                               |
 | `npm run test:account`   | Source-served account dialog tests with mocked HTTP                                          |
@@ -107,9 +107,20 @@ fallback from shared mesh builders without WebGL; rasterize at 384px with
 `rsvg-convert`. `python3 tools/render-brand-icons.py` regenerates favicons from the
 active antler mark and requires librsvg and Pillow. See [branding](../public/brand/README.md).
 
-Vite's hero plugin prepares the fixed seven-hex scene in Node. The embed uses its
-own entrypoint and stylesheet, camera/selection behavior and parent-window messages.
-Keep it working when changing shared renderer or scene-generation modules.
+Vite's scene plugin prepares the seven-hex hero and 14-hex footer trail in Node,
+keeping generation out of the embed bundles. `website-path-world.js` builds an
+embed-only coastal village, farmland, two-hex walled city, rising forests and
+mountains with an abbey and watchtower; it does not reserve a campaign seed or
+change generator replay. Roads use reciprocal exits and ordinary dressing.
+`/embed/hero/` and `/embed/footer/` have separate scene entries and share
+`map-embed.js`, styling, keyboard selection and the lazy renderer boundary.
+Both use Pixelart/Thronefall, ambient motion and fixed cameras without a party.
+The hero initially selects the abbey; the footer waits for a selection.
+URL parameters supply initial background/time, with parent-window messages
+guarded by source, origin and separate `twa-hero`/`twa-footer` prefixes. The parent
+can update TOD, color and visibility; visibility pauses ambient rendering while
+the footer is offscreen. Reduced motion remains owned by the renderer.
+Keep both embeds working when changing shared renderer or scene-generation modules.
 
 ## Licensing
 
