@@ -8,22 +8,22 @@ import { roadKey } from './roads.js';
 export function websitePathWorld() {
   const world = generateWorld('heliotest');
   const definitions = [
-    [-3, 2, 'open water', 0],
-    [-2, 2, 'meadow', 0],
-    [-2, 1, 'farmlands', 0],
-    [-1, 2, 'farmlands', 1],
-    [-1, 1, 'meadow', 1],
-    [0, 1, 'meadow', 1],
+    [-4, 3, 'open water', 0],
+    [-3, 3, 'meadow', 0],
+    [-3, 2, 'farmlands', 0],
+    [-2, 1, 'meadow', 1],
+    [-2, 2, 'meadow', 1],
+    [-1, 1, 'farmlands', 1],
     [-1, 0, 'meadow', 1],
     [0, 0, 'light forest', 2],
-    [1, 0, 'light forest', 2, { kind: 'abbey', variant: 0 }],
-    [0, -1, 'dense forest', 2],
-    [1, -1, 'dense forest', 3, { kind: 'watchtower', variant: 'watchtower' }],
-    [1, -2, 'mountains', 4],
-    [2, -2, 'mountains', 4],
-    [2, -1, 'mountains', 4],
+    [0, -1, 'light forest', 2, { kind: 'abbey', variant: 0 }],
+    [1, -1, 'dense forest', 2],
+    [1, -2, 'dense forest', 3, { kind: 'watchtower', variant: 'watchtower' }],
+    [2, -3, 'mountains', 4],
+    [3, -3, 'mountains', 4],
+    [3, -4, 'mountains', 4],
   ];
-  const topology = createTopology({ radius: 3, sites: [[0, 0]] });
+  const topology = createTopology({ radius: 4, sites: [[0, 0]] });
   const keys = new Set(definitions.map(([q, r]) => keyOf(q, r)));
   topology.cells = topology.cells.filter((cell) => keys.has(cell.key));
   topology.regions[0].hexIds = topology.cells.map((cell) => cell.id);
@@ -33,18 +33,18 @@ export function websitePathWorld() {
     geography: { coastEdges: [2], islands: [], archipelagos: [], waterFraction: 1 / keys.size },
     hydrology: { lakes: [], sources: [], riverKeys: [], meanderBends: [] },
     elevation: {
-      ranges: [{ id: 'footer-range', hexKeys: ['1,-2', '2,-2', '2,-1'] }],
+      ranges: [{ id: 'footer-range', hexKeys: ['2,-3', '3,-3', '3,-4'] }],
       features: [],
     },
     terrain: { openLandMinimum: 0, counts: {} },
     settlements: [
-      { id: 'shore-village', type: 'village', regionId: 1, anchorKey: '-2,2', hexKeys: ['-2,2'] },
+      { id: 'shore-village', type: 'village', regionId: 1, anchorKey: '-3,3', hexKeys: ['-3,3'] },
       {
         id: 'walled-city',
         type: 'city',
         regionId: 1,
-        anchorKey: '-1,1',
-        hexKeys: ['-1,1', '0,1'],
+        anchorKey: '-2,1',
+        hexKeys: ['-2,1', '-2,2'],
       },
     ],
     crossings: [],
@@ -84,7 +84,7 @@ export function websitePathWorld() {
       ];
     world.terrain.counts[terrain] = (world.terrain.counts[terrain] ?? 0) + 1;
   }
-  const road = ['-2,2', '-2,1', '-1,1', '-1,0', '0,0', '1,0'];
+  const road = ['-3,3', '-3,2', '-2,1', '-1,1', '-1,0', '0,0', '0,-1'];
   for (let index = 1; index < road.length; index++) {
     const from = byKey.get(road[index - 1]);
     const to = byKey.get(road[index]);

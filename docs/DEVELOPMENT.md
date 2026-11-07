@@ -109,11 +109,11 @@ active antler mark and requires librsvg and Pillow. See [branding](../public/bra
 
 Vite's scene plugin prepares the seven-hex hero and 14-hex footer trail in Node,
 keeping generation out of the embed bundles. `website-path-world.js` builds an
-compact embed-only coastal village, farmland, two-hex walled city, rising forests and
+embed-only path through a coastal village, farmland, two-hex walled city, rising forests and
 mountains with an abbey and watchtower; it does not reserve a campaign seed or
 change generator replay. Roads use reciprocal exits and ordinary dressing.
-The footprint spreads over adjoining rows, including north–south neighbours,
-while retaining a southwest coast and northeastern mountain range.
+The path bends north and south, widening to paired hexes around landmarks,
+between a southwest coast and northeastern mountain range.
 `/embed/hero/` and `/embed/footer/` have separate scene entries and share
 `map-embed.js`, styling, keyboard selection and the lazy renderer boundary.
 Both use Pixelart/Thronefall, ambient motion and fixed cameras without a party.

@@ -6,7 +6,7 @@ import { footerScene } from '../tools/footer-scene.mjs';
 import { heroScenePlugin } from '../tools/hero-scene-plugin.mjs';
 import { palettes } from '../src/palette.js';
 
-test('website trail stays compact, connected and rises from the coast into wilderness', () => {
+test('website trail bends through adjoining hexes and rises from the coast into wilderness', () => {
   const world = websitePathWorld();
   const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   assert.equal(world.cells.length, 14);
@@ -17,22 +17,33 @@ test('website trail stays compact, connected and rises from the coast into wilde
     column.push(cell);
     columns.set(cell.q, column);
   }
-  assert.ok([...columns.values()].some((cells) => cells.length >= 3));
-  assert.ok(world.cells.filter((cell) => neighbours(cell, byKey).length >= 3).length >= 8);
+  assert.ok([...columns.values()].every((cells) => cells.length <= 2));
   assert.ok(
     Math.max(...world.cells.map((cell) => cell.r)) -
       Math.min(...world.cells.map((cell) => cell.r)) <=
-      4,
+      8,
   );
-  assert.ok(world.cells.filter((cell) => byKey.has(`${cell.q},${cell.r + 1}`)).length >= 6);
-  const path = ['-3,2', '-2,2', '-2,1', '-1,1', '-1,0', '0,0', '1,0', '1,-1', '1,-2', '2,-2'].map(
-    (key) => byKey.get(key),
-  );
+  assert.ok(world.cells.filter((cell) => byKey.has(`${cell.q},${cell.r + 1}`)).length >= 3);
+  const path = [
+    '-4,3',
+    '-3,3',
+    '-3,2',
+    '-2,1',
+    '-1,1',
+    '-1,0',
+    '0,0',
+    '1,-1',
+    '1,-2',
+    '2,-3',
+    '3,-3',
+  ].map((key) => byKey.get(key));
   assert.equal(path[0].water, 'ocean');
   assert.equal(path[1].pointOfLight.type, 'village');
   assert.ok(neighbours(path[1], byKey).includes(path[0]));
-  for (let index = 1; index < path.length; index++)
+  for (let index = 1; index < path.length; index++) {
+    assert.ok(neighbours(path[index - 1], byKey).includes(path[index]));
     assert.ok(path[index].elevation >= path[index - 1].elevation);
+  }
   assert.equal(path.at(-1).terrain, 'mountains');
   assert.ok(world.cells.some((cell) => cell.terrain === 'light forest'));
   assert.ok(world.cells.some((cell) => cell.terrain === 'dense forest'));
@@ -53,9 +64,9 @@ test('website road connects the village, farmland, city and abbey without broken
       assert.ok(Math.abs(cell.elevation - next.elevation) <= 1);
     }
   }
-  for (const key of ['-2,2', '-2,1', '-1,1', '-1,0', '0,0', '1,0'])
+  for (const key of ['-3,3', '-3,2', '-2,1', '-1,1', '-1,0', '0,0', '0,-1'])
     assert.ok(byKey.get(key).road.exits);
-  assert.equal(world.roads.edges.length, 5);
+  assert.equal(world.roads.edges.length, 6);
 });
 
 test('footer scene replays its dressing, walls, roads and mountains using the app palette', () => {
