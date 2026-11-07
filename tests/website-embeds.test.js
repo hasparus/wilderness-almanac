@@ -6,7 +6,7 @@ import { footerScene } from '../tools/footer-scene.mjs';
 import { heroScenePlugin } from '../tools/hero-scene-plugin.mjs';
 import { palettes } from '../src/palette.js';
 
-test('website trail stays narrow, connected and rises from the coast into wilderness', () => {
+test('website trail stays compact, connected and rises from the coast into wilderness', () => {
   const world = websitePathWorld();
   const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   assert.equal(world.cells.length, 14);
@@ -17,9 +17,17 @@ test('website trail stays narrow, connected and rises from the coast into wilder
     column.push(cell);
     columns.set(cell.q, column);
   }
-  assert.ok([...columns.values()].every((cells) => cells.length <= 2));
-  const path = world.cells.filter((cell) => cell.q + cell.r === 0);
-  assert.equal(path.length, 11);
+  assert.ok([...columns.values()].some((cells) => cells.length >= 3));
+  assert.ok(world.cells.filter((cell) => neighbours(cell, byKey).length >= 3).length >= 8);
+  assert.ok(
+    Math.max(...world.cells.map((cell) => cell.r)) -
+      Math.min(...world.cells.map((cell) => cell.r)) <=
+      4,
+  );
+  assert.ok(world.cells.filter((cell) => byKey.has(`${cell.q},${cell.r + 1}`)).length >= 6);
+  const path = ['-3,2', '-2,2', '-2,1', '-1,1', '-1,0', '0,0', '1,0', '1,-1', '1,-2', '2,-2'].map(
+    (key) => byKey.get(key),
+  );
   assert.equal(path[0].water, 'ocean');
   assert.equal(path[1].pointOfLight.type, 'village');
   assert.ok(neighbours(path[1], byKey).includes(path[0]));
@@ -45,9 +53,9 @@ test('website road connects the village, farmland, city and abbey without broken
       assert.ok(Math.abs(cell.elevation - next.elevation) <= 1);
     }
   }
-  for (const key of ['-4,4', '-3,3', '-2,2', '-1,1', '0,0', '1,-1', '2,-1'])
+  for (const key of ['-2,2', '-2,1', '-1,1', '-1,0', '0,0', '1,0'])
     assert.ok(byKey.get(key).road.exits);
-  assert.equal(world.roads.edges.length, 6);
+  assert.equal(world.roads.edges.length, 5);
 });
 
 test('footer scene replays its dressing, walls, roads and mountains using the app palette', () => {

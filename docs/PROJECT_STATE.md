@@ -32,7 +32,7 @@ light ash forest/abbey (2), ocean (0), meadow (0), vineyards/encampment (1).
 It uses the same editing, dressing, fog, party and rendering paths.
 
 The website footer has a separate 14-hex scene at `/embed/footer/`, prepared at
-build time from an explicit narrow coastal-to-mountain trail. It shares ordinary
+build time from an explicit compact coastal-to-mountain trail. It shares ordinary
 dressing and Pixelart rendering without adding a campaign seed or persistence
 format. Its selection is independent of the hero; their time of day is shared
 by the website.
