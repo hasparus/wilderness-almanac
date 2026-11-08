@@ -1,3 +1,4 @@
+// @ts-check
 import { defineConfig } from '@playwright/test';
 import config from './playwright.config.js';
 
@@ -11,6 +12,7 @@ export default defineConfig({
     'journal-pagination.spec.js',
     'panels.spec.js',
     'workspace-controls.spec.js',
+    'deferred-previews.spec.js',
   ],
   reporter: 'list',
   use: { ...config.use, baseURL: 'http://127.0.0.1:4180' },

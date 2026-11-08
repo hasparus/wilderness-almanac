@@ -33,6 +33,8 @@
     "tests/deferred-river-rendering.test.js",
     "tests/chunk-transitions.test.js",
     "tests/incremental-builds.test.js",
-    "e2e/incremental-renderer.spec.js"
+    "e2e/incremental-renderer.spec.js",
+    "e2e/deferred-previews.spec.js",
+    "playwright.workspace.config.js"
   ]
 }

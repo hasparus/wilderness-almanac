@@ -221,7 +221,9 @@ including signed zero and ordering, for generated, edited and locked river repla
 
 Browser fixtures seed current IndexedDB records directly through `e2e/data.js`.
 They do not depend on localStorage campaign migration. The journal pagination component check imports source modules and runs through `test:workspace`, separately from production-build tests. Simulated failures stay in
-test setup and browser contexts are isolated.
+test setup and browser contexts are isolated. Campaign preview scheduling is
+covered by `e2e/deferred-previews.spec.js` in the source-served workspace suite,
+with asserted test-only instrumentation; production-bundle suites exclude it.
 
 `node tools/render-default-icon.mjs /tmp/default-icon.svg` renders the bundled
 fallback from shared mesh builders without WebGL; rasterize at 384px with
