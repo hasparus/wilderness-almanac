@@ -91,6 +91,7 @@ export function createAmbientLoop({ renderer, ambientTime, draw, motion }) {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let motionEnabled = motion;
   let lastFrame = -Infinity;
+  let frameInterval = 50;
   const updateMotion = () => {
     const enabled = motionEnabled && !reducedMotion.matches && !document.hidden;
     lastFrame = -Infinity;
@@ -98,7 +99,7 @@ export function createAmbientLoop({ renderer, ambientTime, draw, motion }) {
     renderer.setAnimationLoop(
       enabled
         ? (time) => {
-            if (time - lastFrame < 50) return;
+            if (time - lastFrame < frameInterval) return;
             if (Number.isFinite(lastFrame)) ambientTime.value += (time - lastFrame) / 1000;
             lastFrame = time;
             draw();
@@ -113,7 +114,11 @@ export function createAmbientLoop({ renderer, ambientTime, draw, motion }) {
   listen(document, 'visibilitychange', updateMotion);
   updateMotion();
   return {
+    setFrameInterval(value) {
+      if (Number.isFinite(value)) frameInterval = Math.max(50, value);
+    },
     setMotion(enabled) {
+      if (motionEnabled === enabled) return;
       motionEnabled = enabled;
       updateMotion();
     },

@@ -93,6 +93,7 @@ export function initializeMapEmbed(scene, { namespace, initialSelection = null, 
         background,
         navigation: false,
         artStyle: 'pixelart',
+        embedded: true,
         onSelect: announceSelection,
       });
       if (!renderer) throw new Error('WebGL is unavailable.');
