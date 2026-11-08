@@ -9,7 +9,7 @@ import { createChunkTransitions } from './chunk-transitions.js';
 /** @typedef {{root: Group, cells: unknown[], lightSources: unknown[], wave: Vector2 | null}} MeshRecord */
 /** @typedef {ReturnType<ReturnType<typeof import('./feature-lighting.js').createFeatureLighting>['build']>} LightingRecord */
 /** @typedef {(raycaster: import('three').Raycaster) => import('three').Intersection | null} Picker */
-/** @typedef {{map: MeshRecord, lighting: LightingRecord, lightingLayout: Tile[] | null, picker: Picker | null, fresh: boolean, revealable: boolean}} Record */
+/** @typedef {{map: MeshRecord, lighting: LightingRecord, lightingLayout: Tile[] | null, picker: Picker | null, tiles: Tile[]}} Record */
 /** @typedef {{map: MeshRecord, lighting: LightingRecord, picker: ReturnType<typeof import('./map-picking.js').createMapPicker> | null}} Presentation */
 /**
  * @typedef {object} BuildContext
@@ -92,9 +92,16 @@ export function createIncrementalMapBuilds(context) {
     renderer.domElement.setAttribute('aria-busy', String(pending));
   }
   /** @returns {void} */
+  function updateLightReveals() {
+    for (const { record } of shownEntries)
+      for (const source of record.lighting.sources)
+        source.reveal.value = transitions.presentation(record.map.root, source.key)?.opacity ?? 1;
+  }
+  /** @returns {void} */
   function finishTransitions() {
     transitions.finishAll();
     if (trimUnderlays()) commitScene();
+    updateLightReveals();
     container.updateWorldMatrix(true, true);
     updateStatus();
   }
@@ -107,8 +114,7 @@ export function createIncrementalMapBuilds(context) {
         ...built,
         lightingLayout: shownLayout,
         picker: null,
-        fresh: true,
-        revealable: tiles.some((tile) => tile.fogState !== 'undiscovered'),
+        tiles,
       };
     },
     release(record) {
@@ -120,6 +126,7 @@ export function createIncrementalMapBuilds(context) {
         container.updateWorldMatrix(true, true);
         updateStatus();
       }
+      transitions.release(record.map.root);
       context.release(record);
     },
     /** @param {Tile[]} tiles @returns {number} */
@@ -159,20 +166,33 @@ export function createIncrementalMapBuilds(context) {
       const pickers = entries.map(({ record }) => {
         if (!record.picker) {
           record.map.root.updateWorldMatrix(true, true);
-          record.picker = createMapPicker([record.map.root], { offset: record.map.root.position });
+          record.picker = createMapPicker([record.map.root], {
+            reveal: (key) => transitions.presentation(record.map.root, key),
+          });
         }
         return record.picker;
       });
       for (const { id, record } of entries) {
-        if (record.fresh && record.revealable && animateRequest && !flushing) {
-          transitions.enter(record.map.root, [...record.lighting.glow, ...record.lighting.beams]);
-          const before = previous.get(id);
-          if (before && before.record !== record && transitions.has(record.map.root))
-            underlays.set(record.map.root, before);
+        const before = previous.get(id);
+        if (before?.record !== record && animateRequest && !flushing) {
+          const order = record.tiles
+            .map((tile) => {
+              point.set(tile.wx, tile.top, tile.wz).project(camera);
+              return { key: tile.key, distance: point.x ** 2 + point.y ** 2 };
+            })
+            .sort((a, b) => a.distance - b.distance)
+            .map((tile) => tile.key);
+          transitions.enter(
+            record.map.root,
+            order,
+            [...record.lighting.glow, ...record.lighting.beams],
+            before?.record.map.root,
+          );
+          if (before && transitions.has(record.map.root)) underlays.set(record.map.root, before);
         }
-        record.fresh = false;
       }
       trimUnderlays();
+      updateLightReveals();
       commitScene();
       container.updateWorldMatrix(true, true);
       const wave = layout.flatMap((tile) => tile.props).find((prop) => prop.kind === 'wave');
@@ -223,6 +243,7 @@ export function createIncrementalMapBuilds(context) {
       const changed = transitions.tick(time);
       if (changed) {
         if (trimUnderlays()) commitScene();
+        updateLightReveals();
         container.updateWorldMatrix(true, true);
         updateStatus();
       }

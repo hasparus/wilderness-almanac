@@ -187,6 +187,7 @@ export function createMapRenderer(
     }
     renderer.domElement.dataset.zoom = String(controls.camera.zoom);
     featureLighting.update(palette.ambientTime.value, controls.camera);
+    shadowFloor.material.depthWrite = !builds.animating?.();
     renderer.clear();
     renderer.render(scene, controls.camera);
     party?.render(renderer, controls.camera);

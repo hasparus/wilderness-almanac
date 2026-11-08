@@ -258,10 +258,10 @@ export function createCampaignMenu({
     expireUndo();
     setMessage(creating ? 'Creating your campaign…' : 'Opening campaign…');
     try {
-      // Two frames guarantee feedback paints before synchronous generation/WebGL work.
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       if (listeners.signal.aborted) return false;
       if (creating) {
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        if (listeners.signal.aborted) return false;
         const world = generateWorld(crypto.randomUUID());
         const palette = typeof defaultPalette === 'function' ? defaultPalette() : defaultPalette;
         campaign = createCampaign(world, palette.colors, palette.paletteName);
@@ -279,7 +279,10 @@ export function createCampaignMenu({
       }
       return false;
     } finally {
-      if (!listeners.signal.aborted) releaseBusy();
+      if (!listeners.signal.aborted) {
+        releaseBusy();
+        if (!menu.hidden) button.focus({ preventScroll: true });
+      }
     }
   }
 

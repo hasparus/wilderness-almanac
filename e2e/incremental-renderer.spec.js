@@ -120,7 +120,7 @@ for (const artStyle of ['low-poly', 'pixelart']) {
     await expect(page.getByRole('button', { name: 'Find party', exact: true })).toBeEnabled();
   });
 
-  test(`motion-enabled ${artStyle} arrivals cancel while settling and cached swaps stay instant`, async ({
+  test(`motion-enabled ${artStyle} arrivals cancel while settling and cached hexes replay without rebuilding`, async ({
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -156,8 +156,11 @@ for (const artStyle of ['low-poly', 'pixelart']) {
 
     for (const concealedAgain of [false, true]) {
       const warm = await observeFogSwap(canvas, fog);
-      expect(warm.immediate, 'cached swaps finish synchronously').toBe('ready');
-      expect(warm.states, 'cached swaps never build or settle').toEqual(['ready']);
+      expect(warm.immediate).toBe(concealedAgain ? 'ready' : 'settling');
+      expect(
+        warm.states,
+        'cached reveals animate without rebuilding; concealment is instant',
+      ).toEqual(concealedAgain ? ['ready'] : ['settling', 'ready']);
       await expect(fog).toBeChecked({ checked: concealedAgain });
       await expect(canvas).toHaveAttribute('aria-busy', 'false');
       expect((await canvas.screenshot(screenshotOptions)).equals(concealed)).toBe(concealedAgain);

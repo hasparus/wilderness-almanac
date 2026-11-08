@@ -11,11 +11,18 @@
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#0f2024" data-dark="#0f2024" data-light="#f1e8db" />
     <script>
+      // @ts-check
+      const campaignEntry =
+        /\/campaign\/[^/]+\/?$/.test(location.pathname) ||
+        new URLSearchParams(location.search).has('seed');
+      document.documentElement.toggleAttribute('data-campaign-entry', campaignEntry);
       try {
         const theme = localStorage.getItem('wilderness-theme') === 'light' ? 'light' : 'dark';
         document.documentElement.dataset.theme = theme;
-        const meta = document.querySelector('meta[name="theme-color"]');
-        meta.content = meta.dataset[theme];
+        const meta = /** @type {HTMLMetaElement | null} */ (
+          document.querySelector('meta[name="theme-color"]')
+        );
+        if (meta) meta.content = meta.dataset[theme] ?? '';
       } catch {
         /* Dark remains available when browser storage is restricted. */
       }
@@ -71,6 +78,9 @@
       }
       [hidden] {
         display: none !important;
+      }
+      html[data-campaign-entry] #campaign-menu {
+        visibility: hidden;
       }
     </style>
     <link rel="preload" href="/fonts/geist-sans.woff2" as="font" type="font/woff2" crossorigin />

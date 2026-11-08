@@ -1,36 +1,69 @@
-// Prepare the incoming view while hidden, then slide between ready views.
+// @ts-check
+
+/** Let the committed shell paint before importing or generating its contents. */
+export function afterPaint() {
+  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
+/**
+ * Serialize view changes, not decorative transitions and content loading.
+ * Preparation is synchronous and runs with only the incoming view in layout.
+ * @param {HTMLElement} menu
+ * @param {HTMLElement} workspace
+ */
 export function createViewNavigation(menu, workspace) {
-  let queued = Promise.resolve(),
-    disposed = false,
-    transition,
-    menuScroll = 0;
+  /** @type {Promise<unknown>} */
+  let queued = Promise.resolve();
+  let disposed = false;
+  /** @type {ViewTransition | undefined} */
+  let transition;
+  let menuScroll = 0;
   const clear = () => {
     menu.inert = workspace.inert = false;
-    menu.style.removeProperty('visibility');
-    workspace.style.removeProperty('visibility');
     delete document.documentElement.dataset.viewDirection;
   };
-  async function show(direction, prepare) {
+  /**
+   * @param {'forward' | 'back'} direction
+   * @param {() => void} prepare
+   * @param {(() => Promise<boolean | void>) | undefined} load
+   */
+  async function show(direction, prepare, load) {
     if (disposed) return false;
     const forward = direction === 'forward';
     const outgoing = forward ? menu : workspace;
     const incoming = forward ? workspace : menu;
-    if (forward) menuScroll = window.scrollY;
-    incoming.style.visibility = 'hidden';
+    if (forward && !menu.hidden) menuScroll = window.scrollY;
     let committed = false;
-    try {
-      if ((await prepare()) === false || disposed) return false;
-      incoming.hidden = true;
-      incoming.style.removeProperty('visibility');
-      outgoing.inert = incoming.inert = true;
-      const commit = () => {
-        if (disposed) return;
+    let succeeded = false;
+    /** @type {() => void} */
+    let resolveCommit = () => {};
+    /** @type {(reason: unknown) => void} */
+    let rejectCommit = () => {};
+    const committedView = new Promise((resolve, reject) => {
+      resolveCommit = () => resolve(undefined);
+      rejectCommit = reject;
+    });
+    const commit = () => {
+      if (committed) return;
+      committed = true;
+      if (disposed) {
+        resolveCommit();
+        return;
+      }
+      try {
         outgoing.hidden = true;
         incoming.hidden = false;
+        prepare();
         window.scrollTo({ top: forward ? 0 : menuScroll, behavior: 'instant' });
-        committed = true;
-      };
+        resolveCommit();
+      } catch (error) {
+        rejectCommit(error);
+      }
+    };
+    outgoing.inert = incoming.inert = true;
+    try {
       if (
+        !outgoing.hidden &&
         document.startViewTransition &&
         !window.matchMedia('(prefers-reduced-motion: reduce)').matches
       ) {
@@ -40,32 +73,43 @@ export function createViewNavigation(menu, workspace) {
         } catch {
           commit();
         }
-        try {
-          await transition?.finished;
-        } catch {
-          // A browser can skip/abort an animation before running its update.
-          // Navigation still has to commit and release both views.
-          if (!committed) commit();
-        }
       } else commit();
-      return !disposed;
+      const animated = transition?.finished.catch(() => commit());
+      await committedView;
+      if (disposed) return false;
+      if (load) {
+        await afterPaint();
+        if (disposed || (await load()) === false) return false;
+      }
+      await animated;
+      succeeded = !disposed;
+      return succeeded;
     } finally {
+      if (!succeeded) transition?.skipTransition();
       transition = undefined;
       if (!disposed) {
-        if (!committed) incoming.hidden = true;
-        clear();
-        if (committed) {
-          const target =
-            incoming.querySelector(forward ? '#hp-scene canvas' : '#new-campaign') ||
-            incoming.querySelector('#hp-back-menu');
-          target?.focus({ preventScroll: true });
+        if (!succeeded) {
+          incoming.hidden = true;
+          outgoing.hidden = false;
+          window.scrollTo({ top: forward ? menuScroll : 0, behavior: 'instant' });
         }
+        clear();
+        const visible = succeeded ? incoming : outgoing;
+        const target =
+          visible.querySelector(visible === menu ? '#new-campaign' : '#hp-scene canvas') ??
+          visible.querySelector('#hp-back-menu');
+        if (target instanceof HTMLElement) target.focus({ preventScroll: true });
       }
     }
   }
   return {
-    show(direction, prepare) {
-      const next = queued.then(() => show(direction, prepare));
+    /**
+     * @param {'forward' | 'back'} direction
+     * @param {() => void} prepare
+     * @param {() => Promise<boolean | void>} [load]
+     */
+    show(direction, prepare, load) {
+      const next = queued.then(() => show(direction, prepare, load));
       queued = next.catch(() => {});
       return next;
     },

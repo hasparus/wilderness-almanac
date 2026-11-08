@@ -1361,6 +1361,21 @@
       cursor: grabbing;
     }
   }
+  #campaign-workspace[data-loading]
+    :is(
+      .hp-scene canvas,
+      .hp-panel-body,
+      .hp-tools,
+      .hp-map-options,
+      .hp-status,
+      .hp-mobile-notice,
+      .hp-mobile-map-controls,
+      .hp-view-controls,
+      .hp-zooms,
+      .save-warning
+    ) {
+    visibility: hidden;
+  }
   .hp-scene canvas {
     display: block;
     width: 100%;

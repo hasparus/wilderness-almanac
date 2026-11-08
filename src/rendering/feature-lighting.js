@@ -4,6 +4,7 @@ import { TOP_RADIUS } from '../generation/math.js';
 import { worldPosition } from '../generation/hex.js';
 import { DAYLIGHT, timeOfDay } from '../application/time-of-day.js';
 import { addGlowTiming, glowTiming, glowPulse, installGlowPulse } from './feature-glow.js';
+import { tagRevealGeometry, lightRevealRanges } from './hex-reveal-geometry.js';
 import {
   lighthouseSweep,
   BEAM_WIDTH,
@@ -14,6 +15,7 @@ import {
 } from './lighthouse-beams.js';
 export { lighthouseTarget } from './lighthouse-beams.js';
 
+/** @typedef {{key: string, reveal: {value: number}, position: THREE.Vector3, kind: string, radiusScale: number, strength: number, phase: number, rate: number}} LightSource */
 const COLORS = { warm: '#ffd269', mystic: '#9b79ff', dungeon: '#f65b49' };
 const POINT_LIMIT = 4,
   BEAM_LIMIT = 2;
@@ -225,10 +227,17 @@ export function createFeatureLighting(scene) {
   const setSources = (entries, cells, options) => release(show(build(entries, cells, options)));
   function build(entries, cells, { artStyle = 'low-poly' } = {}) {
     const pixel = artStyle === 'pixelart';
-    const built = { glow: [], beams: [], sources: [], lighthouses: [] };
+    const built = {
+      glow: [],
+      beams: [],
+      sources: /** @type {LightSource[]} */ ([]),
+      lighthouses: [],
+    };
     const batches = new Map();
     const byKey = new Map(cells.map((cell) => [cell.key, cell]));
-    function add(key, geometry) {
+    /** @param {string} key @param {THREE.BufferGeometry} geometry @param {string} hexKey */
+    function add(key, geometry, hexKey) {
+      tagRevealGeometry(geometry, hexKey);
       if (!batches.has(key)) batches.set(key, []);
       batches.get(key).push(geometry);
     }
@@ -243,6 +252,8 @@ export function createFeatureLighting(scene) {
       const enhanced = pixel && (source.kind === 'lighthouse' || ENHANCED.has(feature));
       const radiusScale = enhanced ? GLOW_SCALE : 1;
       const record = {
+        key: source.tile.key,
+        reveal: { value: 1 },
         position,
         kind,
         radiusScale,
@@ -252,7 +263,7 @@ export function createFeatureLighting(scene) {
       built.sources.push(record);
       const window = new THREE.PlaneGeometry(...source.size.map((size) => size * radiusScale));
       window.translate(...source.position).applyMatrix4(source.matrix);
-      add(`${kind}:window`, addGlowTiming(window, record));
+      add(`${kind}:window`, addGlowTiming(window, record), source.tile.key);
       const targets = [source.tile];
       if (pixel && feature === 'city') {
         // Only adjacent visible dry surfaces at this level receive spill.
@@ -280,6 +291,7 @@ export function createFeatureLighting(scene) {
       add(
         `${kind}:ground`,
         addGlowTiming(halo, pixel && feature === 'city' ? { ...record, strength: 0.35 } : record),
+        source.tile.key,
       );
       if (source.kind === 'lighthouse') {
         const sweep = lighthouseSweep(position, cells, { artStyle });
@@ -297,6 +309,7 @@ export function createFeatureLighting(scene) {
           mesh.name = 'lighthouse:shaft';
           const landing = createWaterLanding(position, cells, texture, COLORS.warm, { artStyle });
           const node = new THREE.Group();
+          node.userData.key = source.tile.key;
           node.add(mesh, landing);
           built.beams.push(node);
           built.lighthouses.push({ ...record, sweep, mesh, landing, aim: new THREE.Vector3() });
@@ -307,6 +320,7 @@ export function createFeatureLighting(scene) {
       const geometry = mergeGeometries(geometries);
       geometries.forEach((item) => item.dispose());
       const mesh = new THREE.Mesh(geometry, materials.get(key));
+      mesh.userData.faceRanges = lightRevealRanges(geometries);
       mesh.name = key;
       built.glow.push(mesh);
     }
@@ -338,6 +352,7 @@ export function createFeatureLighting(scene) {
       light.visible = Boolean(source);
       light.intensity = source
         ? strength *
+          source.reveal.value *
           source.strength *
           glowPulse(time, source) *
           (source.kind === 'dungeon' ? 0.055 : 0.18)
@@ -371,7 +386,9 @@ export function createFeatureLighting(scene) {
     beams.forEach((light, i) => {
       const source = nearby[i];
       light.visible = Boolean(source);
-      light.intensity = source ? strength * source.strength * glowPulse(time, source) * 4.4 : 0;
+      light.intensity = source
+        ? strength * source.reveal.value * source.strength * glowPulse(time, source) * 4.4
+        : 0;
       if (source) {
         light.angle = Math.atan(BEAM_WIDTH * source.radiusScale);
         light.position.copy(source.position);

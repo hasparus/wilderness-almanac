@@ -26,7 +26,8 @@ import { createPartyJournal } from './ui/party-journal.js';
 import { createBatchInspector } from './ui/batch-inspector.js';
 import { createMapAction } from './ui/map-action.js';
 import { loadThumbnails, saveThumbnails } from './ui/thumbnail-cache.js';
-import { createViewNavigation } from './ui/view-navigation.js';
+import { afterPaint, createViewNavigation } from './ui/view-navigation.js';
+import { createCampaignLoadingShell } from './ui/campaign-loading-shell.js';
 import { createControlTooltips } from './ui/control-help.js';
 import { createWorkspaceControls } from './ui/workspace-controls.js';
 import { createMapSelection, PARTY_SELECTION } from './ui/map-selection.js';
@@ -34,6 +35,14 @@ import { hexAddress } from './generation/hex.js';
 
 const root = document.getElementById('campaign-workspace');
 const navigation = createViewNavigation(document.getElementById('campaign-menu'), root);
+const loadingShell = createCampaignLoadingShell(root);
+if (document.documentElement.hasAttribute('data-campaign-entry')) {
+  document.getElementById('campaign-menu').hidden = true;
+  root.hidden = false;
+  root.inert = true;
+  loadingShell.show('Opening campaign…');
+  document.documentElement.removeAttribute('data-campaign-entry');
+}
 const element = (id) => root.querySelector(`#hp-${id}`);
 const mapAction = createMapAction(root, (text) => {
   element('announcement').textContent = text;
@@ -128,7 +137,7 @@ const workspaceControls = createWorkspaceControls(root, {
   getState: session.snapshot,
   getRenderer: () => renderer,
   getLayout: () => displayView.layout,
-  isBusy: mapAction.isBusy,
+  isBusy: () => root.hasAttribute('data-loading') || mapAction.isBusy(),
   onPartyMove: (key) => handleAction(session.moveParty(key)),
   notify: (text) => mapConsole.notify(text),
   refreshPreview() {
@@ -140,7 +149,7 @@ const mapSelection = createMapSelection(root, {
   session,
   getRenderer: () => renderer,
   getInspectors: () => ({ hex: inspector, batch: batchInspector, party: partyInspector }),
-  isBusy: mapAction.isBusy,
+  isBusy: () => root.hasAttribute('data-loading') || mapAction.isBusy(),
   isMobile: workspaceControls.isMobile,
   syncSelection,
   onPartySelected() {
@@ -233,27 +242,42 @@ async function loadMapView() {
 async function openCampaign(campaign, { fromHistory = false } = {}) {
   renderer?.cancelInteraction();
   try {
-    const opened = await navigation.show('forward', async () => {
-      await loadMapView();
-      if (disposed) return false;
-      const keepView = Boolean(renderer && session.snapshot()?.campaign.id === campaign.id);
-      const local = campaignSettings[campaign.id] ?? {};
-      movement = local.motion ?? defaultMovement;
-      campaignTimeIncrement = local.timeIncrement ?? defaultTimeIncrement;
-      panels.enterCampaign(campaign.id, {
-        journalFirst: local.journalFirst ?? defaultJournalFirst,
-      });
-      session.open(campaign);
-      presentCampaign({ resetView: !keepView });
-      if (!fromHistory) campaignHistory?.enter(session.snapshot().campaign);
-    });
+    const opened = await navigation.show(
+      'forward',
+      () => {
+        loadingShell.show(campaign.name);
+        clearTimeout(iconCacheTimer);
+        iconCacheRevision++;
+        renderer?.setMotion(false);
+        const local = campaignSettings[campaign.id] ?? {};
+        movement = local.motion ?? defaultMovement;
+        campaignTimeIncrement = local.timeIncrement ?? defaultTimeIncrement;
+        panels.setMultiEdit(false);
+        panels.setInspectorMode('hex');
+        panels.enterCampaign(campaign.id, {
+          journalFirst: local.journalFirst ?? defaultJournalFirst,
+        });
+      },
+      async () => {
+        await loadMapView();
+        if (disposed) return false;
+        const keepView = Boolean(renderer && session.snapshot()?.campaign.id === campaign.id);
+        session.open(campaign);
+        presentCampaign({ resetView: !keepView });
+        loadingShell.finish();
+        if (!fromHistory) campaignHistory?.enter(session.snapshot().campaign);
+      },
+    );
     if (opened) {
       inspector.refreshPreview();
     }
     return opened;
   } catch (error) {
     renderer?.setMotion(false);
+    document.title = 'The Wilderness Almanac';
     throw error;
+  } finally {
+    loadingShell.finish();
   }
 }
 
@@ -580,12 +604,12 @@ function toggleMultiEdit() {
   if (!mapAction.isBusy() && activeInspector().beforeLeave(change)) change();
 }
 async function showMenu() {
-  renderer?.cancelInteraction();
-  workspaceControls.setExpanded(false);
-  session.save();
-  renderer?.setMotion(false);
-  document.title = 'The Wilderness Almanac';
   await navigation.show('back', () => {
+    renderer?.cancelInteraction();
+    workspaceControls.setExpanded(false);
+    session.save();
+    renderer?.setMotion(false);
+    document.title = 'The Wilderness Almanac';
     campaignMenu.show();
   });
 }
@@ -1000,17 +1024,35 @@ campaignHistory = createCampaignHistory({
     }
   },
 });
+/** Restore the library when startup does not resolve to a campaign. @returns {void} */
+function showInitialMenu() {
+  loadingShell.finish();
+  root.hidden = true;
+  root.inert = false;
+  campaignMenu.show();
+  document.title = 'The Wilderness Almanac';
+}
+/** @param {ReturnType<typeof createCampaign>} campaign @returns {Promise<void>} */
+async function openInitialCampaign(campaign) {
+  try {
+    await openCampaign(campaign);
+  } catch (error) {
+    showInitialMenu();
+    const message = document.getElementById('campaign-message');
+    message.textContent = `Could not open the map. ${error.message}`;
+    message.dataset.kind = 'error';
+  }
+}
 const routedCampaign = campaignMenu
   .snapshotCampaigns()
   .find((campaign) => campaign.id === campaignHistory.initialCampaignId);
 if (linked.error) {
-  campaignMenu.show();
+  showInitialMenu();
   const message = document.getElementById('campaign-message');
   message.textContent = linked.error;
   message.dataset.kind = 'error';
 } else if (routedCampaign && matchesLink(routedCampaign)) {
-  campaignMenu.show();
-  campaignMenu.enter(routedCampaign);
+  void openInitialCampaign(routedCampaign);
 } else if (linked.seed) {
   const state = {
     ...replayState,
@@ -1018,6 +1060,7 @@ if (linked.error) {
   };
   let campaign = campaignMenu.findReplay(state);
   if (!campaign) {
+    await afterPaint();
     campaign = createCampaign(
       generateWorld(linked.seed, {
         generatorVersion: linked.generatorVersion ?? GENERATOR_VERSION,
@@ -1031,8 +1074,8 @@ if (linked.error) {
     );
     await campaignMenu.add(campaign);
   }
-  campaignMenu.enter(campaign);
-} else campaignMenu.show();
+  void openInitialCampaign(campaign);
+} else showInitialMenu();
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     disposed = true;

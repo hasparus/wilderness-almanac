@@ -92,6 +92,19 @@ validate complete edits before one commit/save; multi-edit remains atomic. Faile
 persistence keeps live edits and history available for retry/download. Palette
 changes survive hex Undo; navigation guards unsaved form drafts.
 
+## Campaign entry
+
+Campaign entry commits the workspace loading shell before importing the renderer
+or generating the world. The shell restores panel sizing and the campaign title,
+conceals retained canvas/details without collapsing their boxes, and paints before
+synchronous preparation starts. Only one view participates in layout. Navigation
+remains queued; failed imports or WebGL setup return to the menu with controls
+restored. The shell ends after `setMap` schedules rendering, not after all chunks
+finish. Direct campaign URLs suppress the library before the app module starts
+and open the shell before storage initialization; startup does not render library
+cards or animate from the library. Invalid routes/replays and failed loads restore
+the library. New-campaign creation retains its separate preview/loading flow.
+
 ## Incremental campaign rendering
 
 `src/ui/map-view.js` exposes `createCampaignMapRenderer` for the campaign and the
@@ -117,22 +130,30 @@ without cancelling gestures or changing camera framing. The canvas exposes
 `data-renderer="fiber-retained"`, `data-render-state` and `aria-busy` for inspection.
 The state distinguishes geometry `building`, presentation `settling`, and `ready`.
 
-`chunk-transitions.js` gives newly built, revealed chunks a 120 ms quartic ease-out
-drop and opacity arrival, starting at about six CSS pixels above their resting
-position. Chunks start independently on their first render opportunity; there is
-no added stagger or wait for the whole map. Warm cache swaps, undiscovered-only
-chunks, and restrictive fog updates remain instant. Movement off and reduced
-motion skip transitions; disabling motion during an arrival settles it on the
-next frame. The existing render loop drives arrivals and refreshes shadows, while
-picker bounds follow the temporary translation without rescanning vertices.
-Temporary material clones retain wind/wave shader hooks and leave shared
-materials and geometry untouched. Completion, concealment and disposal restore
-original transforms/materials and release the clones. A previous, no-more-revealing
-chunk can remain underneath the arrival to avoid fading through an empty hole;
-it is excluded from picking and detached immediately on concealment. Underlays
-remain owned by the two-record cache; retiring one settles its arrival and detaches
-it before release. Light meshes travel with the chunk; palette/lighting changes settle active arrivals first. Snapshots flush
-both pending geometry and transitions.
+`chunk-transitions.js` reveals individual hexes with a 120 ms quartic ease-out rise
+and fade, starting about six CSS pixels below their resting position. Geometry and
+4×4 batches remain intact. Within each ready chunk, the closest hexes start first,
+8 ms apart: at most 120 ms of stagger, not a whole-map queue. Cached reveals replay
+the same motion without rebuilding geometry; concealment stays instantaneous.
+Movement off and reduced motion skip arrivals, and disabling motion settles an
+active arrival on the next frame.
+
+Batched geometry retains one byte per vertex for stable hex ownership. Per-hex
+delay uniforms drive color, rise and depth shaders; no per-hex draw calls or
+per-frame vertex uploads are added. Temporary materials restore after arrival,
+but their compiled programs remain cached with the build record for warm replay.
+Record release disposes those wrappers. Wind/wave hooks and original geometry
+buffers remain intact. Per-mesh bounding spheres cover the shader displacement;
+picking follows each hex's offset and skips hexes that have not appeared yet.
+Light meshes retain source-hex ranges and native light intensity follows the fade.
+The existing render loop drives arrivals and refreshes shadows.
+
+A previous, no-more-revealing cached record can remain underneath the arrival.
+Its temporary shader biases depth behind incoming geometry and removes each hex
+as its replacement finishes. Underlays never participate in picking, and detach
+immediately on concealment; retiring one settles its arrival before release.
+Palette/lighting changes settle active arrivals first. Snapshots flush both queued
+geometry and transitions, restoring original materials and bounds.
 
 The standalone comparison tool has its own pinned dependencies and compares
 monolithic, native incremental, declarative Fiber and retained Fiber modes:
