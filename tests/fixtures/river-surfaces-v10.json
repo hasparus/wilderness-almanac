@@ -1,0 +1,897 @@
+{
+  "baseline": "fc28a3b0576a153c9e148a7cae8d0db1c1767e2a",
+  "generated": {
+    "7": [
+      {
+        "key": "1,-4",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2320,
+        "triangles": 4339,
+        "shore": 139,
+        "waterTriangles": 643,
+        "hash": "a0c0d1f95885f957b84c2e28b3afab2dc946558c33c04f8269fcc1c88a7a7db1"
+      },
+      {
+        "key": "2,-5",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2154,
+        "triangles": 3948,
+        "shore": 206,
+        "waterTriangles": 1168,
+        "hash": "72568fcf247e29cf51337714b6e5b8b5871534d9cb2d5aafc6a0f863d25b2b8c"
+      },
+      {
+        "key": "3,-5",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2081,
+        "triangles": 3805,
+        "shore": 204,
+        "waterTriangles": 1307,
+        "hash": "859f3dc299bfde6c112cd68ec87fe4406c677a8c198d67edd9b6a860e6006ad4"
+      },
+      {
+        "key": "4,-6",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2074,
+        "triangles": 3771,
+        "shore": 224,
+        "waterTriangles": 1381,
+        "hash": "019a6c7b3ce83ee90f58d3301d986a59b3fe9d216100cfbe8d92a2b9ae2d6ac9"
+      },
+      {
+        "key": "5,-7",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2083,
+        "triangles": 3812,
+        "shore": 202,
+        "waterTriangles": 1296,
+        "hash": "c4e1bec65e975b563ef22dfbc265c08b793fb377659fc1c9ee7ec161a21afad4"
+      },
+      {
+        "key": "3,0",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2320,
+        "triangles": 4341,
+        "shore": 137,
+        "waterTriangles": 637,
+        "hash": "b5d7194bd91af9c4cf4b1423628ce4b4a2a5bd0164c97d7a3927c6085c2784fb"
+      },
+      {
+        "key": "4,-3",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2292,
+        "triangles": 4283,
+        "shore": 139,
+        "waterTriangles": 699,
+        "hash": "41331aba7a50fbadef295a9943661ea71e07b116d98c8bfa7dff8ae390aa26de"
+      },
+      {
+        "key": "4,-1",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2144,
+        "triangles": 3908,
+        "shore": 224,
+        "waterTriangles": 1244,
+        "hash": "73c98c494b88e599565998ef8b0e63fde0dc0bf8c763f8baa399c74ebd76ab8c"
+      },
+      {
+        "key": "5,-4",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2135,
+        "triangles": 3915,
+        "shore": 200,
+        "waterTriangles": 1189,
+        "hash": "9693dc59ba4ddf811a8e0eb908f345fe371b24c919f15361ccf0dfa0d75f10cb"
+      },
+      {
+        "key": "5,-2",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2099,
+        "triangles": 3819,
+        "shore": 224,
+        "waterTriangles": 1333,
+        "hash": "995c7ad57cc5134edc2c20698f906ed5ff1005a5b20e3dbbbf3d3525b5f81c9f"
+      },
+      {
+        "key": "6,-7",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2004,
+        "triangles": 3656,
+        "shore": 200,
+        "waterTriangles": 1448,
+        "hash": "d4e51f7c56b512fdf264d24d4e337ba481e3557f63a573aaec39a94594fe707c"
+      },
+      {
+        "key": "6,-4",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 1804,
+        "triangles": 3178,
+        "shore": 283,
+        "waterTriangles": 2092,
+        "hash": "c999785d72502a02d914cbcb00acce9654cd4c896710d5779f2e84acf2df8f19"
+      },
+      {
+        "key": "6,-3",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2103,
+        "triangles": 3845,
+        "shore": 206,
+        "waterTriangles": 1271,
+        "hash": "db12aaa1b01bc8a0f39c0232cff204e638a94d61a49be6bdacd58ab682c24672"
+      },
+      {
+        "key": "7,-8",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 1968,
+        "triangles": 3561,
+        "shore": 224,
+        "waterTriangles": 1591,
+        "hash": "988196c1d901c448007697f76e931e46bada3c48627e9260f86e9acd1695ac73"
+      },
+      {
+        "key": "7,-5",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2119,
+        "triangles": 3796,
+        "shore": 288,
+        "waterTriangles": 1484,
+        "hash": "f46e94eefc1d699e2eec61e57ca77a0828d385600c05368999e4d6a5f2654c1a"
+      },
+      {
+        "key": "8,-9",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2003,
+        "triangles": 3669,
+        "shore": 186,
+        "waterTriangles": 1407,
+        "hash": "dde447ec055a8308b5ce42f5a41cb9a3177eb85647133417395e7ffbf6723547"
+      },
+      {
+        "key": "8,-7",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2013,
+        "triangles": 3693,
+        "shore": 182,
+        "waterTriangles": 1375,
+        "hash": "4074476772158034f78beba6bb12dde8d6d80b319845cc8e3e955cc773a79a58"
+      },
+      {
+        "key": "8,-6",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2010,
+        "triangles": 3667,
+        "shore": 202,
+        "waterTriangles": 1441,
+        "hash": "f058d45d218f0917510c27566bd176aa55d0d5c413af03506b7b753154a17f74"
+      },
+      {
+        "key": "9,-9",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 1607,
+        "triangles": 2802,
+        "shore": 271,
+        "waterTriangles": 2444,
+        "hash": "8859a1b6e89acb6ce6af7864226917cdb7129a20094937cb98ef8c15242d799a"
+      },
+      {
+        "key": "9,-8",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2013,
+        "triangles": 3685,
+        "shore": 190,
+        "waterTriangles": 1399,
+        "hash": "4b73ab789a598ce32c3a721052aa436397f08d3676383b0562494f74fceca9d0"
+      },
+      {
+        "key": "10,-10",
+        "mouth": true,
+        "islands": 0,
+        "vertices": 198,
+        "triangles": 290,
+        "shore": 89,
+        "waterTriangles": 4592,
+        "hash": "cca38a643dcc9a10c01e37e4efe3aad007aaf99f34be03b604285507fd43092c"
+      }
+    ],
+    "77": [
+      {
+        "key": "2,-1",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2065,
+        "triangles": 3725,
+        "shore": 254,
+        "waterTriangles": 1487,
+        "hash": "b67db51d757fbb2fb299d32b24b8f783d78b2d072f6b595007bef77190a0991d"
+      },
+      {
+        "key": "3,-2",
+        "mouth": true,
+        "islands": 0,
+        "vertices": 204,
+        "triangles": 301,
+        "shore": 89,
+        "waterTriangles": 4581,
+        "hash": "edd24b0041fd6d28002bd176b21c9601238b5ef8576f7c30be503ef0afd16aad"
+      },
+      {
+        "key": "4,1",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2304,
+        "triangles": 4303,
+        "shore": 143,
+        "waterTriangles": 687,
+        "hash": "cb2e5f3894f0dd5ad8eb7fba2cb52bec5da83c1a5a358546455fb2abada7c3d7"
+      },
+      {
+        "key": "-3,5",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2305,
+        "triangles": 4308,
+        "shore": 139,
+        "waterTriangles": 674,
+        "hash": "d79f9062267945e65be0e4691318e9588faa1a7b42f11cfafbbb2e167188dbb5"
+      },
+      {
+        "key": "-2,5",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2113,
+        "triangles": 3847,
+        "shore": 224,
+        "waterTriangles": 1305,
+        "hash": "e108dd6ec9b52afe54e14c9aec7cc597fd2657dedd58a0fea634e67db008325e"
+      },
+      {
+        "key": "-1,5",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2081,
+        "triangles": 3786,
+        "shore": 224,
+        "waterTriangles": 1366,
+        "hash": "9387987405373f69ccdff24f2d08debfc3025101f42967547a39bda8b0ef17a8"
+      },
+      {
+        "key": "-1,8",
+        "mouth": true,
+        "islands": 0,
+        "vertices": 213,
+        "triangles": 317,
+        "shore": 91,
+        "waterTriangles": 4569,
+        "hash": "208977cdc3f288969d796c8e65c6c42979443e1a08a8cd059c2cbf8779572c0c"
+      },
+      {
+        "key": "0,3",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2261,
+        "triangles": 4215,
+        "shore": 147,
+        "waterTriangles": 783,
+        "hash": "4ca9559d5feb8d6f7a2dba324747937f1991fd212e29f59465ddc930fe37c5f7"
+      },
+      {
+        "key": "0,5",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2087,
+        "triangles": 3836,
+        "shore": 186,
+        "waterTriangles": 1240,
+        "hash": "885aa0f18d7a54e636f1da28b2afe87d6919fb6f11da30b7e300fc4e1598fc49"
+      },
+      {
+        "key": "0,6",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2082,
+        "triangles": 3722,
+        "shore": 288,
+        "waterTriangles": 1558,
+        "hash": "36d8a18540ecc239fa35f82d2968471925f3d149df8bfdde82c97dd8a3a9c1a7"
+      },
+      {
+        "key": "0,7",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2012,
+        "triangles": 3671,
+        "shore": 202,
+        "waterTriangles": 1437,
+        "hash": "fa2133f007bc3dfea5a69552e2905d62e2468051292ff18a874cb47a0be69e4a"
+      },
+      {
+        "key": "1,2",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2044,
+        "triangles": 3712,
+        "shore": 224,
+        "waterTriangles": 1440,
+        "hash": "dbc0b2bcd55150e0814ccaf6ec46dacf91d7c5755e8169f6bdcc9d59a1770e55"
+      },
+      {
+        "key": "2,0",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2007,
+        "triangles": 3640,
+        "shore": 224,
+        "waterTriangles": 1512,
+        "hash": "a52bd094d0af4118bb98714c864168aab4b8a947b0203cdc0ae073bdf4fb8107"
+      },
+      {
+        "key": "2,1",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 1756,
+        "triangles": 3086,
+        "shore": 281,
+        "waterTriangles": 2180,
+        "hash": "9d2de6f8f80812b8c442626da1b4c758991e49cbcee14d9fe854a52d57774666"
+      },
+      {
+        "key": "3,1",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2067,
+        "triangles": 3755,
+        "shore": 224,
+        "waterTriangles": 1397,
+        "hash": "8153ef3441ec7015bfcc32ef3ab7165da9f266f830b8f65698457bf1689f5c44"
+      }
+    ],
+    "1234-mw": [
+      {
+        "key": "-4,-2",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2113,
+        "triangles": 3869,
+        "shore": 202,
+        "waterTriangles": 1239,
+        "hash": "a679e3c300ede57a6901dfd3e99a7b514cf46e19314828e71b9b4b312f4eefe6"
+      },
+      {
+        "key": "-4,-1",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2092,
+        "triangles": 3825,
+        "shore": 204,
+        "waterTriangles": 1287,
+        "hash": "db7747fb9dee95435113e09a37a63128818638d355dd1711a513ff8c1ebdafe5"
+      },
+      {
+        "key": "-3,-3",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2070,
+        "triangles": 3762,
+        "shore": 224,
+        "waterTriangles": 1390,
+        "hash": "74a49fd5e627d2bcb1641fe9997e4eebd3fa84d6ba231375843030c6f8ab9b0e"
+      },
+      {
+        "key": "-2,-4",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2036,
+        "triangles": 3726,
+        "shore": 196,
+        "waterTriangles": 1370,
+        "hash": "13aef00a77ad56a4c279d905a26a064036388fb01f3de5d026f50eac0470030f"
+      },
+      {
+        "key": "-1,-4",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2011,
+        "triangles": 3678,
+        "shore": 194,
+        "waterTriangles": 1414,
+        "hash": "b63e332c269c14e51107e52adf94ff9dd8dd44b4b6639277ad49282b913800ff"
+      },
+      {
+        "key": "0,-5",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 1982,
+        "triangles": 3588,
+        "shore": 224,
+        "waterTriangles": 1564,
+        "hash": "92ad08fcec85d9999a561313945b13d4606c79b49fefc9510e3cc35627878e99"
+      },
+      {
+        "key": "1,-6",
+        "mouth": true,
+        "islands": 0,
+        "vertices": 208,
+        "triangles": 306,
+        "shore": 91,
+        "waterTriangles": 4580,
+        "hash": "93164f611bc29ce15702a0ea8d444a074900e0827a791294f5f2f301fa1274a5"
+      },
+      {
+        "key": "4,0",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2057,
+        "triangles": 3738,
+        "shore": 224,
+        "waterTriangles": 1414,
+        "hash": "e3069a9d020f0bae1ac81397c7e9e87d6feb7c955e469c68a50109fac2d053d0"
+      },
+      {
+        "key": "5,-1",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2253,
+        "triangles": 4205,
+        "shore": 141,
+        "waterTriangles": 781,
+        "hash": "b18cd5b18cc42b82e5518215eb582ee8865a29e7ad077f4b70434d083df53dce"
+      },
+      {
+        "key": "-6,5",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2030,
+        "triangles": 3706,
+        "shore": 202,
+        "waterTriangles": 1402,
+        "hash": "f2847a686712e2fe724e397ed21fbee36148fb51dba2d87cafb30be1e0ded0f4"
+      },
+      {
+        "key": "-6,6",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2019,
+        "triangles": 3663,
+        "shore": 224,
+        "waterTriangles": 1489,
+        "hash": "f953ff43025926f81977f9f0640cf82edc81fca371dd67cb23d7679860bce59f"
+      },
+      {
+        "key": "-6,7",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2015,
+        "triangles": 3685,
+        "shore": 194,
+        "waterTriangles": 1407,
+        "hash": "e9c3ccb084b10101046a98a746821f4d3ebf699b81c0286f24453513f4a98f4a"
+      },
+      {
+        "key": "-5,0",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2270,
+        "triangles": 4235,
+        "shore": 143,
+        "waterTriangles": 755,
+        "hash": "1a9ef96cc52e7f154633bb134d09f0209ed15d417d91be97bdc47e51134204c7"
+      },
+      {
+        "key": "-5,3",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2130,
+        "triangles": 3898,
+        "shore": 206,
+        "waterTriangles": 1218,
+        "hash": "dd79d17103f0027416f8dd072655ce32a02a0603325d22e69207dd8d13f7dc86"
+      },
+      {
+        "key": "-5,4",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2095,
+        "triangles": 3840,
+        "shore": 196,
+        "waterTriangles": 1256,
+        "hash": "c558b337a6f8062971743fbed52e48d36d8bda06875ed3036f467028cc11706f"
+      },
+      {
+        "key": "-5,7",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 1987,
+        "triangles": 3635,
+        "shore": 188,
+        "waterTriangles": 1445,
+        "hash": "778b837b4fd4e22726e7cba16b88d837d75817cc11b41f7fd5964ca0321f1856"
+      },
+      {
+        "key": "-4,2",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2284,
+        "triangles": 4267,
+        "shore": 139,
+        "waterTriangles": 715,
+        "hash": "12451674a20894e5b2de17734ad4df3e7818cd94f48ff7d2e89225c6d2858292"
+      },
+      {
+        "key": "-5,8",
+        "mouth": true,
+        "islands": 0,
+        "vertices": 211,
+        "triangles": 313,
+        "shore": 91,
+        "waterTriangles": 4573,
+        "hash": "d311461a056dda0bf7c3232ba0d1ad9118f818c760e92e474a44c9da82e702da"
+      },
+      {
+        "key": "-2,3",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2320,
+        "triangles": 4341,
+        "shore": 137,
+        "waterTriangles": 637,
+        "hash": "e08c484687aed748bee9224f9b2dc0f9fea1c21edad6592df862efbaa2fb1580"
+      },
+      {
+        "key": "-1,3",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2126,
+        "triangles": 3872,
+        "shore": 224,
+        "waterTriangles": 1280,
+        "hash": "b1a4a5376ce6d689df2d5c285f3de50f3b706535f380325eb58a972befaf020b"
+      },
+      {
+        "key": "0,3",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2093,
+        "triangles": 3830,
+        "shore": 202,
+        "waterTriangles": 1278,
+        "hash": "c2956cf295b13404311cc25bcf7ea1fc5f087f6c290fc9bae8a62ad45b8d4970"
+      },
+      {
+        "key": "0,4",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2199,
+        "triangles": 4008,
+        "shore": 236,
+        "waterTriangles": 1168,
+        "hash": "1fd61ad8c21b073961b3d6f78b9d731d14afc71a3e10a9afe0b858c139688024"
+      },
+      {
+        "key": "1,4",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2038,
+        "triangles": 3700,
+        "shore": 224,
+        "waterTriangles": 1452,
+        "hash": "fa882cfdc46b096718d797afe3f852916c6bb8a23fcb8f06abacd84628f14af9"
+      },
+      {
+        "key": "2,4",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2012,
+        "triangles": 3680,
+        "shore": 194,
+        "waterTriangles": 1412,
+        "hash": "c462cf8386a2fa3da8f31de8407cfd2d0bb81219036c01993d718b829a4677d8"
+      },
+      {
+        "key": "3,1",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2037,
+        "triangles": 3714,
+        "shore": 208,
+        "waterTriangles": 1406,
+        "hash": "484bf1a7c49688c27dc64800cf41feaf595280661081bb41f7034f16e7237ab1"
+      },
+      {
+        "key": "3,2",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2024,
+        "triangles": 3673,
+        "shore": 224,
+        "waterTriangles": 1479,
+        "hash": "e8072bf8e0963a605f96f3821fea2c974caed5405658917d6ad89041ad87e157"
+      },
+      {
+        "key": "3,3",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 1667,
+        "triangles": 2917,
+        "shore": 277,
+        "waterTriangles": 2341,
+        "hash": "53fa6e2db009cfacd156d27ad49103dac9cec2208c31f80ba57ff4a3b266437d"
+      },
+      {
+        "key": "4,3",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 1945,
+        "triangles": 3533,
+        "shore": 208,
+        "waterTriangles": 1587,
+        "hash": "a222b271e7dc4296ccc7d6b87dcff5e44dbf7009abb48368bc70abdfac430e7b"
+      },
+      {
+        "key": "4,4",
+        "mouth": true,
+        "islands": 0,
+        "vertices": 204,
+        "triangles": 300,
+        "shore": 89,
+        "waterTriangles": 4582,
+        "hash": "e2268517a3f8f4a05430fe91f0e30b7a213e72852423ed8158d83409af252166"
+      }
+    ]
+  },
+  "editedLocked": {
+    "key": "-11,-1",
+    "surfaces": [
+      {
+        "key": "-11,-1",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2308,
+        "triangles": 4321,
+        "shore": 133,
+        "waterTriangles": 649,
+        "hash": "f53e30cb1e9facc5261988c0af02a647dcceea2e78ff8d3827f813650d8f5ed3"
+      },
+      {
+        "key": "-11,0",
+        "mouth": true,
+        "islands": 0,
+        "vertices": 250,
+        "triangles": 378,
+        "shore": 101,
+        "waterTriangles": 4528,
+        "hash": "483e5722fbdc0f760b8798617596fbc099445da044432dc7309d898fd5521097"
+      },
+      {
+        "key": "1,-4",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2320,
+        "triangles": 4339,
+        "shore": 139,
+        "waterTriangles": 643,
+        "hash": "a0c0d1f95885f957b84c2e28b3afab2dc946558c33c04f8269fcc1c88a7a7db1"
+      },
+      {
+        "key": "2,-5",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2154,
+        "triangles": 3948,
+        "shore": 206,
+        "waterTriangles": 1168,
+        "hash": "72568fcf247e29cf51337714b6e5b8b5871534d9cb2d5aafc6a0f863d25b2b8c"
+      },
+      {
+        "key": "3,-5",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2081,
+        "triangles": 3805,
+        "shore": 204,
+        "waterTriangles": 1307,
+        "hash": "859f3dc299bfde6c112cd68ec87fe4406c677a8c198d67edd9b6a860e6006ad4"
+      },
+      {
+        "key": "4,-6",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2074,
+        "triangles": 3771,
+        "shore": 224,
+        "waterTriangles": 1381,
+        "hash": "019a6c7b3ce83ee90f58d3301d986a59b3fe9d216100cfbe8d92a2b9ae2d6ac9"
+      },
+      {
+        "key": "5,-7",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2083,
+        "triangles": 3812,
+        "shore": 202,
+        "waterTriangles": 1296,
+        "hash": "c4e1bec65e975b563ef22dfbc265c08b793fb377659fc1c9ee7ec161a21afad4"
+      },
+      {
+        "key": "3,0",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2320,
+        "triangles": 4341,
+        "shore": 137,
+        "waterTriangles": 637,
+        "hash": "b5d7194bd91af9c4cf4b1423628ce4b4a2a5bd0164c97d7a3927c6085c2784fb"
+      },
+      {
+        "key": "4,-3",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2292,
+        "triangles": 4283,
+        "shore": 139,
+        "waterTriangles": 699,
+        "hash": "41331aba7a50fbadef295a9943661ea71e07b116d98c8bfa7dff8ae390aa26de"
+      },
+      {
+        "key": "4,-1",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2144,
+        "triangles": 3908,
+        "shore": 224,
+        "waterTriangles": 1244,
+        "hash": "73c98c494b88e599565998ef8b0e63fde0dc0bf8c763f8baa399c74ebd76ab8c"
+      },
+      {
+        "key": "5,-4",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2135,
+        "triangles": 3915,
+        "shore": 200,
+        "waterTriangles": 1189,
+        "hash": "9693dc59ba4ddf811a8e0eb908f345fe371b24c919f15361ccf0dfa0d75f10cb"
+      },
+      {
+        "key": "5,-2",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2099,
+        "triangles": 3819,
+        "shore": 224,
+        "waterTriangles": 1333,
+        "hash": "995c7ad57cc5134edc2c20698f906ed5ff1005a5b20e3dbbbf3d3525b5f81c9f"
+      },
+      {
+        "key": "6,-7",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2004,
+        "triangles": 3656,
+        "shore": 200,
+        "waterTriangles": 1448,
+        "hash": "d4e51f7c56b512fdf264d24d4e337ba481e3557f63a573aaec39a94594fe707c"
+      },
+      {
+        "key": "6,-4",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 1804,
+        "triangles": 3178,
+        "shore": 283,
+        "waterTriangles": 2092,
+        "hash": "c999785d72502a02d914cbcb00acce9654cd4c896710d5779f2e84acf2df8f19"
+      },
+      {
+        "key": "6,-3",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2103,
+        "triangles": 3845,
+        "shore": 206,
+        "waterTriangles": 1271,
+        "hash": "db12aaa1b01bc8a0f39c0232cff204e638a94d61a49be6bdacd58ab682c24672"
+      },
+      {
+        "key": "7,-8",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 1968,
+        "triangles": 3561,
+        "shore": 224,
+        "waterTriangles": 1591,
+        "hash": "988196c1d901c448007697f76e931e46bada3c48627e9260f86e9acd1695ac73"
+      },
+      {
+        "key": "7,-5",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2119,
+        "triangles": 3796,
+        "shore": 288,
+        "waterTriangles": 1484,
+        "hash": "f46e94eefc1d699e2eec61e57ca77a0828d385600c05368999e4d6a5f2654c1a"
+      },
+      {
+        "key": "8,-9",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2003,
+        "triangles": 3669,
+        "shore": 186,
+        "waterTriangles": 1407,
+        "hash": "dde447ec055a8308b5ce42f5a41cb9a3177eb85647133417395e7ffbf6723547"
+      },
+      {
+        "key": "8,-7",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2013,
+        "triangles": 3693,
+        "shore": 182,
+        "waterTriangles": 1375,
+        "hash": "4074476772158034f78beba6bb12dde8d6d80b319845cc8e3e955cc773a79a58"
+      },
+      {
+        "key": "8,-6",
+        "mouth": false,
+        "islands": 1,
+        "vertices": 2010,
+        "triangles": 3667,
+        "shore": 202,
+        "waterTriangles": 1441,
+        "hash": "f058d45d218f0917510c27566bd176aa55d0d5c413af03506b7b753154a17f74"
+      },
+      {
+        "key": "9,-9",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 1607,
+        "triangles": 2802,
+        "shore": 271,
+        "waterTriangles": 2444,
+        "hash": "8859a1b6e89acb6ce6af7864226917cdb7129a20094937cb98ef8c15242d799a"
+      },
+      {
+        "key": "9,-8",
+        "mouth": false,
+        "islands": 0,
+        "vertices": 2013,
+        "triangles": 3685,
+        "shore": 190,
+        "waterTriangles": 1399,
+        "hash": "4b73ab789a598ce32c3a721052aa436397f08d3676383b0562494f74fceca9d0"
+      },
+      {
+        "key": "10,-10",
+        "mouth": true,
+        "islands": 0,
+        "vertices": 198,
+        "triangles": 290,
+        "shore": 89,
+        "waterTriangles": 4592,
+        "hash": "cca38a643dcc9a10c01e37e4efe3aad007aaf99f34be03b604285507fd43092c"
+      }
+    ]
+  },
+  "unbeveled": "3cb24564a5e5b9b7a8c48d3a93b111b31eb1e2e943cd029a65a356dcb8623f8c"
+}

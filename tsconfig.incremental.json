@@ -24,6 +24,8 @@
     "src/ui/campaign-loading-shell.js",
     "e2e/campaign-entry.spec.js",
     "src/rendering/map-picking.js",
+    "src/generation/river-surfaces.js",
+    "tests/river-surface-optimization.test.js",
     "tests/chunk-transitions.test.js",
     "tests/incremental-builds.test.js",
     "e2e/incremental-renderer.spec.js"

@@ -1,9 +1,42 @@
+// @ts-check
 import { TOP_RADIUS } from './math.js';
 
+/**
+ * @typedef {[number[], number[], number, number]} RiverSegment
+ * @typedef {{ x: number, z: number, nx: number, nz: number, width: number }} RiverMouth
+ * @typedef {{
+ *   phase: number,
+ *   roughness?: number,
+ *   bankHeight?: number,
+ *   channel: RiverSegment[],
+ *   islands: RiverSegment[],
+ *   bankBarriers?: number[][][],
+ *   landEdges: RiverSegment[],
+ *   mouths?: RiverMouth[],
+ * }} RiverField
+ * @typedef {{
+ *   wx: number,
+ *   wz: number,
+ *   river: RiverField,
+ *   riverCorners: number[][],
+ *   bankBevel?: boolean,
+ *   clipWater?: boolean,
+ * }} RiverCell
+ * @typedef {{ x: number, z: number, v: number }} RawPoint
+ * @typedef {{ vertices: number[][], triangles: number[][] }} SurfaceMesh
+ * @typedef {SurfaceMesh & {
+ *   shore: number[][][],
+ *   water?: SurfaceMesh,
+ *   materialIndices?: number[],
+ * }} RiverSurface
+ */
+
 const APOTHEM = Math.sqrt(3) / 2;
+/** @param {number} x @param {number} z */
 const hexRadius = (x, z) =>
   Math.max(Math.abs(x), Math.abs(x * 0.5 + z * APOTHEM), Math.abs(x * 0.5 - z * APOTHEM)) / APOTHEM;
 
+/** @param {number} x @param {number} z @param {RiverSegment} segment */
 function tubeValue(x, z, segment) {
   const [a, b, ra, rb] = segment,
     dx = b[0] - a[0],
@@ -11,6 +44,7 @@ function tubeValue(x, z, segment) {
     t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz)));
   return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t) - (ra + (rb - ra) * t);
 }
+/** @param {RiverField} river @param {number} x @param {number} z */
 function riverBankValue(river, x, z) {
   if (river.mouths) {
     let land = -Infinity;
@@ -45,16 +79,19 @@ function riverBankValue(river, x, z) {
   }
   return bank;
 }
+/** @param {RiverField} river @param {number} x @param {number} z */
 function riverIslandValue(river, x, z) {
   let value = -Infinity;
   for (const segment of river.islands) value = Math.max(value, -tubeValue(x, z, segment));
   return value;
 }
+/** @param {RiverField} river @param {number} x @param {number} z */
 function riverLandValue(river, x, z) {
   return Math.max(riverBankValue(river, x, z), riverIslandValue(river, x, z));
 }
+/** @param {RiverField} river @param {number} x @param {number} z */
 function riverBankHeight(river, x, z) {
-  if (Number.isFinite(river.bankHeight)) return river.bankHeight;
+  if (Number.isFinite(river.bankHeight)) return /** @type {number} */ (river.bankHeight);
   let weight = 0,
     height = 0;
   for (const edge of river.landEdges) {
@@ -70,6 +107,7 @@ function riverBankHeight(river, x, z) {
   }
   return weight ? height / weight : 0.14;
 }
+/** @param {RiverCell} cell @param {number} x @param {number} z */
 function riverTopHeight(cell, x, z) {
   const height = riverBankHeight(cell.river, cell.wx + x, cell.wz + z);
   if (!cell.bankBevel) return height;
@@ -77,6 +115,7 @@ function riverTopHeight(cell, x, z) {
   // Match the ordinary tile: top at radius .92, outer edge .075 lower.
   return height - 0.075 * Math.max(0, Math.min(1, (radius - TOP_RADIUS) / (1 - TOP_RADIUS)));
 }
+/** @param {RiverCell} cell @param {number} x @param {number} z @param {number} margin */
 function insideRiverTile(cell, x, z, margin = 0) {
   for (let k = 0; k < 6; k++) {
     const a = cell.riverCorners[k],
@@ -89,37 +128,43 @@ function insideRiverTile(cell, x, z, margin = 0) {
 }
 // Clip planar bank tops at the exact shoreline, then add vertical cliff faces.
 // No submerged, triangulated slope crosses the water plane.
+/** @param {RiverCell} cell @returns {RiverSurface} */
 function riverSurface(cell) {
-  const vertices = [],
-    triangles = [],
-    shore = [],
-    lookup = new Map(),
+  const vertices = /** @type {number[][]} */ ([]),
+    triangles = /** @type {number[][]} */ ([]),
+    shore = /** @type {number[][][]} */ ([]),
+    lookup = /** @type {Map<string, number>} */ (new Map()),
     n = 28,
     corners = cell.riverCorners,
-    waterVertices = [],
-    waterTriangles = [],
-    waterLookup = new Map(),
-    materialIndices = [];
+    waterVertices = /** @type {number[][]} */ ([]),
+    waterTriangles = /** @type {number[][]} */ ([]),
+    waterLookup = /** @type {Map<string, number>} */ (new Map()),
+    materialIndices = /** @type {number[]} */ ([]);
+  /** @param {number} x @param {number} z @returns {RawPoint} */
   function raw(x, z) {
     return { x, z, v: riverLandValue(cell.river, cell.wx + x, cell.wz + z) };
   }
+  /** @param {RawPoint} a @param {RawPoint} b @returns {RawPoint} */
   function intersection(a, b) {
     const t = a.v / (a.v - b.v);
     return { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, v: 0 };
   }
+  /** @param {RawPoint} p @returns {number} */
   function vertex(p) {
     const key = p.x.toFixed(8) + ',' + p.z.toFixed(8);
-    if (lookup.has(key)) return lookup.get(key);
+    if (lookup.has(key)) return /** @type {number} */ (lookup.get(key));
     const x = cell.wx + p.x,
       z = cell.wz + p.z,
-      island = riverIslandValue(cell.river, x, z),
-      bank = riverBankValue(cell.river, x, z),
-      y = island > bank ? 0.045 : riverTopHeight(cell, p.x, p.z),
+      onIsland =
+        cell.river.islands.length > 0 &&
+        riverIslandValue(cell.river, x, z) > riverBankValue(cell.river, x, z),
+      y = onIsland ? 0.045 : riverTopHeight(cell, p.x, p.z),
       index = vertices.length;
     vertices.push([p.x, y, p.z]);
     lookup.set(key, index);
     return index;
   }
+  /** @param {RawPoint[]} points */
   function triangle(points) {
     const bevel =
       cell.bankBevel && points.some((point) => hexRadius(point.x, point.z) > TOP_RADIUS + 1e-8);
@@ -151,49 +196,57 @@ function riverSurface(cell) {
         if (a.v <= 0) wet.push(a);
         if ((a.v < 0 && b.v > 0) || (a.v > 0 && b.v < 0)) wet.push(intersection(a, b));
       }
+      /** @param {RawPoint} p @returns {number} */
       const indexOf = (p) => {
         const key = p.x.toFixed(8) + ',' + p.z.toFixed(8);
         if (!waterLookup.has(key)) {
           waterLookup.set(key, waterVertices.length);
           waterVertices.push([p.x, 0, p.z]);
         }
-        return waterLookup.get(key);
+        return /** @type {number} */ (waterLookup.get(key));
       };
       for (let i = 1; i < wet.length - 1; i++)
         waterTriangles.push([indexOf(wet[0]), indexOf(wet[i]), indexOf(wet[i + 1])]);
     }
   }
-  const rawLookup = new Map(),
-    atPoint = (x, z) => {
-      const key = x.toFixed(8) + ',' + z.toFixed(8);
-      if (!rawLookup.has(key)) rawLookup.set(key, raw(x, z));
-      return rawLookup.get(key);
-    };
+  const rawLookup = /** @type {Map<string, RawPoint>} */ (new Map());
+  /** @param {number} x @param {number} z @returns {RawPoint} */
+  const atPoint = (x, z) => {
+    const key = x.toFixed(8) + ',' + z.toFixed(8);
+    if (!rawLookup.has(key)) rawLookup.set(key, raw(x, z));
+    return /** @type {RawPoint} */ (rawLookup.get(key));
+  };
   for (let k = 0; k < 6; k++) {
+    const lattice = /** @type {(RawPoint | undefined)[]} */ (new Array((n + 1) * (n + 1)));
     const a = corners[k],
-      b = corners[(k + 1) % 6],
-      at = (i, j) => {
-        if (!cell.bankBevel) return atPoint((i * a[0] + j * b[0]) / n, (i * a[1] + j * b[1]) / n);
-        const ring = i + j;
-        if (!ring) return atPoint(0, 0);
-        // Put an exact mesh ring at the same .92 crease as the land tile.
-        const innerRings = n - 2;
-        const radius =
-          ring <= innerRings
-            ? (TOP_RADIUS * ring) / innerRings
-            : TOP_RADIUS + ((1 - TOP_RADIUS) * (ring - innerRings)) / 2;
-        return atPoint(
-          ((i * a[0] + j * b[0]) / ring) * radius,
-          ((i * a[1] + j * b[1]) / ring) * radius,
-        );
-      };
+      b = corners[(k + 1) % 6];
+    /** @param {number} i @param {number} j @returns {RawPoint} */
+    const at = (i, j) => {
+      const index = i * (n + 1) + j;
+      const cached = lattice[index];
+      if (cached) return cached;
+      if (!cell.bankBevel)
+        return (lattice[index] = atPoint((i * a[0] + j * b[0]) / n, (i * a[1] + j * b[1]) / n));
+      const ring = i + j;
+      if (!ring) return (lattice[index] = atPoint(0, 0));
+      // Put an exact mesh ring at the same .92 crease as the land tile.
+      const innerRings = n - 2;
+      const radius =
+        ring <= innerRings
+          ? (TOP_RADIUS * ring) / innerRings
+          : TOP_RADIUS + ((1 - TOP_RADIUS) * (ring - innerRings)) / 2;
+      return (lattice[index] = atPoint(
+        ((i * a[0] + j * b[0]) / ring) * radius,
+        ((i * a[1] + j * b[1]) / ring) * radius,
+      ));
+    };
     for (let i = 0; i < n; i++)
       for (let j = 0; j < n - i; j++) {
         triangle([at(i, j), at(i + 1, j), at(i, j + 1)]);
         if (i + j < n - 1) triangle([at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)]);
       }
   }
-  const surface = { vertices, triangles, shore };
+  const surface = /** @type {RiverSurface} */ ({ vertices, triangles, shore });
   if (cell.clipWater) surface.water = { vertices: waterVertices, triangles: waterTriangles };
   if (cell.bankBevel) surface.materialIndices = materialIndices;
   return surface;
