@@ -453,7 +453,7 @@ function refreshPresentation({ resetView = false } = {}) {
 
 function renderWorld({ resetView = false } = {}) {
   const { world, dressing, campaign } = session.snapshot();
-  layout = prepareMap(world, dressing);
+  layout = prepareMap(world, dressing, { deferRiverSurfaces: true });
   refreshPresentation({ resetView });
   syncSelection();
   root.dataset.variant = String(campaign.variant);

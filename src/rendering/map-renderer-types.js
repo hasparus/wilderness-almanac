@@ -4,7 +4,7 @@
  * Numeric metadata consumed by camera framing and selection outlines. Mesh
  * builders keep additional generation fields outside this boundary.
  * @typedef {{vertices: number[][], triangles: number[][]}} Surface
- * @typedef {{key: string, top: number, g: import('three').Group, surface?: Surface | null, riverSurface?: Surface | null, corners?: number[][], riverCorners?: number[][]}} ControlCell
+ * @typedef {{key: string, top: number, g: import('three').Group, surface?: Surface | null, riverSurface?: import('../generation/river-surface-cache.js').RiverSurface | import('../generation/river-surface-cache.js').DeferredRiverSurface | null, corners?: number[][], riverCorners?: number[][]}} ControlCell
  * @typedef {{notify?: boolean, additive?: boolean, fromMap?: boolean}} SelectionOptions
  * @typedef {{resetView?: boolean, fitContent?: boolean, preserveFraming?: boolean}} RefreshOptions
  * @typedef {{x: number, y: number}} PointerPosition

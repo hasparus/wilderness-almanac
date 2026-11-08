@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { resolveRiverSurface } from '../generation/river-surface-cache.js';
 import { addMesh, geometryFrom } from './geometry.js';
 import { surfaceHeight, TOP_RADIUS } from '../generation/math.js';
 import { pixelUV } from './pixel-model-geometry.js';
@@ -203,7 +204,7 @@ export function createTerrainBuilder({
       addMesh(parent, textured(geometryFrom(points), data, true), modelMaterial('riverGround'));
   }
   function makeRiver(parent, data) {
-    const surface = data.riverSurface,
+    const surface = resolveRiverSurface(data.riverSurface),
       water = [],
       cliffs = [],
       normals = [];

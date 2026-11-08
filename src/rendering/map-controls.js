@@ -1,5 +1,6 @@
 // @ts-check
 import * as THREE from 'three';
+import { resolveRiverSurface } from '../generation/river-surface-cache.js';
 import { geometryFrom } from './geometry.js';
 import { surfaceHeight } from '../generation/math.js';
 import { fitPreviewCamera } from './preview-framing.js';
@@ -41,7 +42,7 @@ export function createMapControls({
   /** @param {import('./map-renderer-types.js').ControlCell} cell */
   function ringGeometry(cell) {
     const points = [],
-      surface = cell.surface || cell.riverSurface,
+      surface = cell.surface || resolveRiverSurface(cell.riverSurface),
       mountain = !!surface,
       n = cell.riverSurface ? 28 : mountain ? 8 : 1;
     const corners =

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { resolveRiverSurface } from '../generation/river-surface-cache.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TOP_RADIUS } from '../generation/math.js';
 import { worldPosition } from '../generation/hex.js';
@@ -45,7 +46,7 @@ function groundGlow(tiles, position, radius, includeBevel = false) {
   const clipped = [];
   for (const tile of tiles) {
     const centre = point(tile);
-    const surface = tile.surface || tile.riverSurface || tile.roadSurface;
+    const surface = tile.surface || resolveRiverSurface(tile.riverSurface) || tile.roadSurface;
     const vertices = surface
       ? [...surface.vertices]
       : [
