@@ -32,6 +32,7 @@ import { createControlTooltips } from './ui/control-help.js';
 import { createWorkspaceControls } from './ui/workspace-controls.js';
 import { createMapSelection, PARTY_SELECTION } from './ui/map-selection.js';
 import { hexAddress } from './generation/hex.js';
+import { observeDeferredMapWork } from './ui/deferred-map-work.js';
 
 const root = document.getElementById('campaign-workspace');
 const navigation = createViewNavigation(document.getElementById('campaign-menu'), root);
@@ -86,8 +87,14 @@ let mapView;
 let mapViewLoading;
 let disposed = false;
 let iconCacheRevision = 0;
-let iconCacheTimer;
 let partyButtonSignature = '';
+let partyInspectorSignature = '';
+let inspectorPreviewIdentity = [];
+const deferredMapWork = observeDeferredMapWork(root, element('scene'), () => {
+  syncParty();
+  inspector?.refreshPreview();
+  partyInspector?.refreshPreview();
+});
 const session = createCampaignSession({ persist: persistCampaign });
 const initialVariant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
@@ -246,8 +253,11 @@ async function openCampaign(campaign, { fromHistory = false } = {}) {
       'forward',
       () => {
         loadingShell.show(campaign.name);
-        clearTimeout(iconCacheTimer);
+        deferredMapWork.clear();
         iconCacheRevision++;
+        partyButtonSignature = '';
+        element('find-party-preview').hidden = true;
+        element('find-party').querySelector('svg').removeAttribute('hidden');
         renderer?.setMotion(false);
         const local = campaignSettings[campaign.id] ?? {};
         movement = local.motion ?? defaultMovement;
@@ -314,9 +324,10 @@ function presentCampaign({ resetView = false } = {}) {
 
 function scheduleCampaignIcons() {
   const revision = ++iconCacheRevision;
-  clearTimeout(iconCacheTimer);
-  // Let the map and page transition paint before preparing still previews.
-  iconCacheTimer = setTimeout(() => void cacheCampaignIcons(revision), 300);
+  deferredMapWork.cancel('gallery-tile');
+  void deferredMapWork.enqueue('gallery-start', () => {
+    void cacheCampaignIcons(revision);
+  });
 }
 
 async function cacheCampaignIcons(revision) {
@@ -336,13 +347,15 @@ async function cacheCampaignIcons(revision) {
       if (!current()) return;
       let entry = cached.get(key);
       if (!entry) {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        const image = await deferredMapWork.enqueue('gallery-tile', () => {
+          if (!current()) return '';
+          return mapView.tilePreview(
+            tiles?.find((tile) => tile.key === key),
+            campaign.colors,
+            { artStyle: campaign.artStyle },
+          );
+        });
         if (!current()) return;
-        const image = mapView.tilePreview(
-          tiles?.find((tile) => tile.key === key),
-          campaign.colors,
-          { artStyle: campaign.artStyle },
-        );
         if (image) entry = { key, image };
       }
       if (!entry && key === campaign.iconKey) return;
@@ -493,20 +506,28 @@ function syncParty() {
       campaign.colors,
       campaign.artStyle,
     ]);
+    deferredMapWork.cancel('party-button');
     if (signature !== partyButtonSignature) {
-      const src = mapView.partyPreview(
-        campaign.partyToken,
-        campaign.colors,
-        color,
-        campaign.artStyle,
-      );
-      if (src) {
-        const image = element('find-party-preview');
-        image.src = src;
-        image.hidden = false;
-        element('find-party').querySelector('svg').setAttribute('hidden', '');
-        partyButtonSignature = signature;
-      }
+      element('find-party-preview').hidden = true;
+      element('find-party').querySelector('svg').removeAttribute('hidden');
+      void deferredMapWork.enqueue('party-button', () => {
+        const src = mapView.partyPreview(
+          campaign.partyToken,
+          campaign.colors,
+          color,
+          campaign.artStyle,
+        );
+        if (src) {
+          const image = element('find-party-preview');
+          image.src = src;
+          image.hidden = false;
+          element('find-party').querySelector('svg').setAttribute('hidden', '');
+          partyButtonSignature = signature;
+        }
+      });
+    } else {
+      element('find-party-preview').hidden = false;
+      element('find-party').querySelector('svg').setAttribute('hidden', '');
     }
   }
 }
@@ -605,6 +626,8 @@ function toggleMultiEdit() {
 }
 async function showMenu() {
   await navigation.show('back', () => {
+    deferredMapWork.clear();
+    iconCacheRevision++;
     renderer?.cancelInteraction();
     workspaceControls.setExpanded(false);
     session.save();
@@ -627,8 +650,18 @@ listen(preset, 'change', () => {
 function updateInspector() {
   const state = session.snapshot();
   if (!state) return;
+  deferredMapWork.cancel('hex-inspector');
+  deferredMapWork.cancel('party-inspector');
   const { dressing, selected, campaign, canUndo } = state;
   if (state.partySelected) {
+    partyInspectorHost.querySelector('#hp-party-preview').hidden =
+      partyInspectorSignature !==
+      JSON.stringify([
+        campaign.partyToken.style,
+        campaign.colors.join(','),
+        campaign.partyToken.color ?? mapView.partyColor(campaign.colors),
+        campaign.artStyle,
+      ]);
     partyInspector?.update({ ...state, visibleWorld: displayView.world });
     return;
   }
@@ -650,6 +683,12 @@ function updateInspector() {
   const cell = cellsByKey.get(selected);
   if (!cell || !dressing || !layout) return;
   const edit = campaign.hexEdits?.cells[selected];
+  const tile = displayView.layout.find((entry) => entry.key === selected);
+  singleInspectorHost.querySelector('#hp-hex-preview').hidden = ![
+    tile,
+    colors.join(','),
+    campaign.artStyle,
+  ].every((value, index) => value === inspectorPreviewIdentity[index]);
   inspector?.update({
     world: displayView.world,
     cell,
@@ -738,17 +777,36 @@ partyInspector = createPartyInspector(partyInspectorHost, {
       },
       'Selecting…',
     ),
-  preview: (party, colors, color) =>
-    mapView?.partyPreview(party, colors, color, session.snapshot()?.campaign.artStyle) ?? '',
+  preview: (party, colors, color) => {
+    const artStyle = session.snapshot()?.campaign.artStyle;
+    const identity = [party.style, colors.join(','), color, artStyle];
+    const src = deferredMapWork.preview(
+      'party-inspector',
+      identity,
+      () => mapView?.partyPreview(party, colors, color, artStyle) ?? '',
+      () => partyInspector.refreshPreview(),
+    );
+    partyInspectorHost.querySelector('#hp-party-preview').hidden = !src;
+    if (src) partyInspectorSignature = JSON.stringify(identity);
+    return src;
+  },
   colorFor: (colors) => mapView.partyColor(colors),
   visible: panels.partyVisible,
 });
 inspector = createHexInspector(singleInspectorHost, {
   visible: panels.inspectorVisible,
-  preview: (tile, colors) =>
-    mapView?.tilePreview(tile, colors, {
-      artStyle: session.snapshot()?.campaign.artStyle,
-    }) ?? '',
+  preview: (tile, colors) => {
+    const artStyle = session.snapshot()?.campaign.artStyle;
+    const identity = [tile, colors.join(','), artStyle];
+    const src = deferredMapWork.preview(
+      'hex-inspector',
+      identity,
+      () => mapView?.tilePreview(tile, colors, { artStyle }) ?? '',
+      () => inspector.refreshPreview(),
+    );
+    if (src) inspectorPreviewIdentity = identity;
+    return src;
+  },
   onApply: (patch, button) => mapAction.run(button, () => handleAction(session.apply(patch))),
   onVisit: (event) =>
     mapAction.run(event.currentTarget, () => handleAction(session.visit()), 'Updating visit…'),
@@ -1079,7 +1137,7 @@ if (linked.error) {
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     disposed = true;
-    clearTimeout(iconCacheTimer);
+    deferredMapWork.dispose();
     iconCacheRevision++;
     navigation.dispose();
     campaignHistory.dispose();
