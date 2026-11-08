@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { BufferGeometry } from 'three';
 import { generateWorld, generateDressing } from '../src/generation/world.js';
 import { prepareMap } from '../src/generation/presentation.js';
 import { createMapMeshes } from '../src/rendering/map-meshes.js';
@@ -79,6 +80,35 @@ for (const { seed, variant, colors, expected } of fixtures)
       meshes.dispose();
       registry.dispose();
     }
+  });
+
+for (const artStyle of ['low-poly', 'pixelart'])
+  test(`${artStyle} batching consumes prop geometry without cloning or double disposal`, (t) => {
+    const world = generateWorld('heliotest');
+    const layout = prepareMap(world, generateDressing(world, 0));
+    const before = structuredClone(layout);
+    const registry = createMapMaterials();
+    const meshes = createMapMeshes(registry, { artStyle });
+    const clones = t.mock.method(BufferGeometry.prototype, 'clone');
+    const dispose = BufferGeometry.prototype.dispose;
+    const disposals = new Map();
+    t.mock.method(BufferGeometry.prototype, 'dispose', function () {
+      disposals.set(this, (disposals.get(this) ?? 0) + 1);
+      return dispose.call(this);
+    });
+    try {
+      meshes.setMap(layout);
+      const first = meshDigest(meshes.group);
+      meshes.setMap(layout);
+      assert.deepEqual(meshDigest(meshes.group), first);
+      assert.deepEqual(layout, before, 'batching leaves numeric inputs unchanged');
+      assert.equal(clones.mock.callCount(), 0);
+    } finally {
+      meshes.dispose();
+      registry.dispose();
+    }
+    assert.ok(disposals.size > 0);
+    assert.ok([...disposals.values()].every((count) => count === 1));
   });
 
 test('rebuilds release old geometry once, retain shared materials, and dispose their owned resources', () => {

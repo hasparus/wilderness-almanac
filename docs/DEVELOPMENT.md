@@ -62,8 +62,10 @@ screenshot and HTML-report directories. Map checks request reduced motion by def
 
 Keep Three.js behind the lazy `src/ui/map-view.js` entry. The menu and Inspector
 share a still-preview renderer; do not introduce per-hex WebGL contexts. Mesh
-builders stay independent of browser lifecycle. Scene, controls, geometry,
-materials, textures, preview jobs and listeners each have explicit disposal owners.
+builders stay independent of browser lifecycle. Prop batching consumes private component
+geometries directly; only indexed-to-nonindexed expansion needs a replacement buffer.
+Scene, controls, geometry, materials, textures, preview jobs and listeners each have
+explicit disposal owners.
 
 `generateWorld(seed, { preferences, generatorVersion })` creates plain world data;
 `generateDressing(world, variant)` creates cosmetic descriptors; `prepareMap(world,

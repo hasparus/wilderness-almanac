@@ -233,7 +233,7 @@ export function createMapMeshes(
             ? crownGeometry(object.userData.foliageFar)
             : object.geometry.index && !pixelProp
               ? object.geometry.toNonIndexed()
-              : object.geometry.clone();
+              : object.geometry;
           geometry.applyMatrix4(object.matrixWorld);
           for (const name of Object.keys(geometry.attributes))
             if (name !== 'position' && name !== 'normal' && !(name === 'uv' && object.material.map))
@@ -264,7 +264,7 @@ export function createMapMeshes(
             batch.pixelSize,
             object.userData.foliagePixelSize * object.matrixWorld.getMaxScaleOnAxis(),
           );
-        object.geometry.dispose();
+        if (object.geometry.index && !pixelProp) object.geometry.dispose();
       });
       propRoot.removeFromParent();
       g.traverse((o) => {
