@@ -18,6 +18,7 @@ export function createMapControls({
   party,
   touchMultiSelect = false,
   navigation = true,
+  picker = () => createMapPicker(map),
 }) {
   const listeners = new AbortController();
   const listen = (target, event, handler, options = {}) =>
@@ -206,7 +207,7 @@ export function createMapControls({
   }
   const raycaster = new THREE.Raycaster(),
     mouse = new THREE.Vector2();
-  let pick = createMapPicker(map);
+  let pick = picker();
   function hit(x, y) {
     const rect = host.getBoundingClientRect();
     mouse.set(((x - rect.left) / rect.width) * 2 - 1, (-(y - rect.top) / rect.height) * 2 + 1);
@@ -507,7 +508,7 @@ export function createMapControls({
     refresh({ resetView = false, fitContent: fit = false, preserveFraming = false } = {}) {
       cancelHover();
       map.updateWorldMatrix(true, true);
-      pick = createMapPicker(map);
+      pick = picker();
       fitContent = fit;
       hovered = null;
       onHover(null);

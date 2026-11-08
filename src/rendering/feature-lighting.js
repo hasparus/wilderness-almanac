@@ -12,6 +12,7 @@ import {
   updateWaterLanding,
   softenBeamEnd,
 } from './lighthouse-beams.js';
+import { createBuildCache } from './build-cache.js';
 export { lighthouseTarget } from './lighthouse-beams.js';
 
 const COLORS = { warm: '#ffd269', mystic: '#9b79ff', dungeon: '#f65b49' };
@@ -193,21 +194,40 @@ export function createFeatureLighting(scene) {
   const aim = new THREE.Vector3(),
     direction = new THREE.Vector3(),
     focus = new THREE.Vector3();
-  function clear() {
-    for (const mesh of group.children) mesh.geometry.dispose();
-    group.clear();
-    for (const source of lighthouses) {
-      source.landing.geometry.dispose();
-      source.landing.material.dispose();
-      source.mesh.material.dispose();
-    }
-    beamGroup.clear();
+  // Glow batches follow the map build: the full layout's lighting stays
+  // resident while a fog projection is shown. See build-cache.js.
+  const builds = createBuildCache({
+    attach(build) {
+      group.add(...build.glow);
+      beamGroup.add(...build.beams);
+      sources = build.sources;
+      lighthouses = build.lighthouses;
+    },
+    detach() {
+      group.clear();
+      beamGroup.clear();
+      sources = [];
+      lighthouses = [];
+    },
+    release(build) {
+      for (const mesh of build.glow) mesh.geometry.dispose();
+      for (const source of build.lighthouses) {
+        source.landing.geometry.dispose();
+        source.landing.material.dispose();
+        source.mesh.material.dispose();
+      }
+    },
+  });
+  function setSources(entries, cells, { artStyle = 'low-poly' } = {}) {
+    return builds.set(cells, artStyle, () => {
+      build(entries, cells, artStyle);
+      return { glow: [...group.children], beams: [...beamGroup.children], sources, lighthouses };
+    });
+  }
+  function build(entries, cells, artStyle) {
+    const pixel = artStyle === 'pixelart';
     sources = [];
     lighthouses = [];
-  }
-  function setSources(entries, cells, { artStyle = 'low-poly' } = {}) {
-    const pixel = artStyle === 'pixelart';
-    clear();
     const batches = new Map();
     const byKey = new Map(cells.map((cell) => [cell.key, cell]));
     function add(key, geometry) {
@@ -371,7 +391,7 @@ export function createFeatureLighting(scene) {
     },
     update,
     dispose() {
-      clear();
+      builds.clear();
       group.removeFromParent();
       beamGroup.removeFromParent();
       for (const light of points) light.removeFromParent();
