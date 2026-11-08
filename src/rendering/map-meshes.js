@@ -109,8 +109,9 @@ export function createMapMeshes(
   }
   configure(artStyle);
   // A build is a record with its own group; show replaces whatever is shown
-  // and release disposes a record. The renderer decides which records to keep
-  // (see map-builds.js); setMap is the plain replace-everything path.
+  // (never with the record already shown) and release disposes a record. The
+  // renderer decides which records to keep (see map-builds.js); setMap is the
+  // plain replace-everything path.
   let shown = null;
   function build(layout, options = {}) {
     if (options.artStyle !== undefined && mapArtStyle(options.artStyle) !== style)

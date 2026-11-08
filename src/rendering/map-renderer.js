@@ -86,7 +86,7 @@ export function createMapRenderer(
       : new THREE.Color(backgroundColor ?? palette.background());
   }
   const meshes = createMapMeshes(palette, { artStyle });
-  // The stage frames everything shown; only the map build is pickable.
+  // The mesh group holds only build records; the stage also frames previews.
   const stage = new THREE.Group();
   stage.add(meshes.group);
   scene.add(stage);
@@ -224,8 +224,7 @@ export function createMapRenderer(
       artStyle = mapArtStyle(styleOfArt);
       previewPiece?.group.removeFromParent();
       previewPiece?.dispose();
-      const empty = [];
-      builds.show(empty, empty, artStyle);
+      builds.clear();
       if (previousStyle === 'pixelart' && artStyle !== previousStyle)
         palette.releasePixelMaterials();
       previewPiece = createPartyPiece(PARTY_STYLES.indexOf(style), color, artStyle);

@@ -18,15 +18,15 @@ test('toggling between a source layout and its projection shows retained builds'
   const { builds, take } = harness();
   const source = [{ key: 'a' }],
     fog = [{ key: 'a', fogState: 'undiscovered' }];
-  assert.equal(builds.show(source, source, 'low-poly'), true);
+  builds.show(source, source, 'low-poly');
   assert.deepEqual(take(), ['show 1']);
-  assert.equal(builds.show(fog, source, 'low-poly'), true);
+  builds.show(fog, source, 'low-poly');
   assert.deepEqual(take(), ['show 2'], 'the source build is kept');
-  assert.equal(builds.show(source, source, 'low-poly'), true);
+  builds.show(source, source, 'low-poly');
   assert.deepEqual(take(), ['show 1'], 'fog off restores it without a build');
-  assert.equal(builds.show(source, source, 'low-poly'), false);
+  builds.show(source, source, 'low-poly');
   assert.deepEqual(take(), []);
-  assert.equal(builds.show(fog, source, 'low-poly'), true);
+  builds.show(fog, source, 'low-poly');
   assert.deepEqual(take(), ['show 2'], 'the projection is kept as well');
   assert.equal(builds.active().id, 2);
 });

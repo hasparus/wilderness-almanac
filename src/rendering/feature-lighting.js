@@ -194,8 +194,9 @@ export function createFeatureLighting(scene) {
     direction = new THREE.Vector3(),
     focus = new THREE.Vector3();
   // A build is a record of glow batches, lighthouse nodes and their animation
-  // state; show replaces whatever is shown and release disposes a record. The
-  // renderer keeps and restores records (see map-builds.js).
+  // state; show replaces whatever is shown (never with the record already
+  // shown) and release disposes a record. The renderer keeps and restores
+  // records (see map-builds.js).
   let shown = null;
   function show(record) {
     const previous = shown;

@@ -27,7 +27,7 @@ export function createMapBuilds({ build, show, release }) {
       let slot = isSource ? source : projection;
       const stale = slot && slot.layout !== layout ? slot : null;
       if (stale) slot = null;
-      if (slot && slot === active) return false;
+      if (slot && slot === active) return;
       if (!slot) {
         slot = { layout, record: build(layout, nextKey) };
         if (isSource) source = slot;
@@ -36,7 +36,6 @@ export function createMapBuilds({ build, show, release }) {
       show(slot.record);
       active = slot;
       if (stale) release(stale.record);
-      return true;
     },
   };
 }

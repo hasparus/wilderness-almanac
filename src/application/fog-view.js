@@ -92,7 +92,8 @@ export function createFogViewer() {
   let plain, fogged;
   return (world, layout, states) => {
     if (!states) {
-      if (plain?.world !== world || plain.layout !== layout) plain = { world, layout };
+      if (plain?.world !== world || plain.layout !== layout)
+        plain = createFogView(world, layout, null);
       return plain;
     }
     if (fogged?.world !== world || fogged.layout !== layout || fogged.states !== states)
