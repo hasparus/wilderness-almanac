@@ -98,6 +98,7 @@ export function createMapRenderer(
     scene,
     map: meshes.group,
     cells: meshes.cells,
+    picker: meshes.picker,
     materials: palette.materials,
     draw,
     requestHover: queueFrame,

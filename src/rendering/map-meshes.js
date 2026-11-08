@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { addMesh, clearGeometries } from './geometry.js';
+import { addMesh, clearGeometries, disposeGeometries } from './geometry.js';
+import { createBuildCache } from './build-cache.js';
+import { createMapPicker } from './map-picking.js';
 import { windWeight } from './ambient-motion.js';
 import { createTerrainBuilder } from './terrain-meshes.js';
 import { createNatureBuilder } from './nature-props.js';
@@ -108,10 +110,42 @@ export function createMapMeshes(
     });
   }
   configure(artStyle);
-  function buildMap(layout, options = {}) {
-    if (options.artStyle !== undefined && mapArtStyle(options.artStyle) !== style)
-      configure(options.artStyle);
-    clearGeometries(map);
+  // The full build stays resident while a fog projection is shown, so turning
+  // fog off restores it without a rebuild. See build-cache.js.
+  const builds = createBuildCache({
+    attach(build) {
+      clearGeometries(map);
+      map.add(...build.children);
+      cells.push(...build.cells);
+      lightSources.push(...build.lightSources);
+      if (build.wave) waveDirection.value.copy(build.wave);
+    },
+    detach(build) {
+      map.remove(...build.children);
+      cells.length = 0;
+      lightSources.length = 0;
+    },
+    release: (build) => disposeGeometries(build.children),
+  });
+  function setMap(layout, options = {}) {
+    const nextStyle = options.artStyle !== undefined ? mapArtStyle(options.artStyle) : style;
+    return builds.set(layout, nextStyle, () => {
+      // Style-specific materials may be released after this call; the cache
+      // has already dropped every build of the previous style.
+      if (nextStyle !== style) configure(nextStyle);
+      clearGeometries(map);
+      buildMap(layout);
+      return {
+        children: [...map.children],
+        cells: cells.slice(),
+        lightSources: lightSources.slice(),
+        wave: layout.some((tile) => tile.props.some((prop) => prop.kind === 'wave'))
+          ? waveDirection.value.clone()
+          : null,
+      };
+    });
+  }
+  function buildMap(layout) {
     cells.length = 0;
     lightSources.length = 0;
     const propBatches = new Map();
@@ -271,8 +305,16 @@ export function createMapMeshes(
     group: map,
     cells,
     lightSources,
-    setMap: buildMap,
+    setMap,
+    // Map objects are static once built, so a build keeps its picker and a
+    // restored build needs no new range bounds. Extra objects fall back.
+    picker() {
+      const build = builds.current();
+      if (!build || map.children.length !== build.children.length) return createMapPicker(map);
+      return (build.picker ??= createMapPicker(map));
+    },
     dispose() {
+      builds.clear();
       clearGeometries(map);
       cells.length = 0;
       lightSources.length = 0;

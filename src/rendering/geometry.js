@@ -34,11 +34,16 @@ export function terrainFootingGeometry(radius, heights) {
 }
 
 // Geometry belongs to the map; materials are shared and disposed by their owner.
-export function clearGeometries(root) {
+export function disposeGeometries(objects) {
   const geometries = new Set();
-  root.traverse((object) => {
-    if (object.geometry) geometries.add(object.geometry);
-  });
-  root.clear();
+  for (const object of objects)
+    object.traverse((child) => {
+      if (child.geometry) geometries.add(child.geometry);
+    });
   geometries.forEach((geometry) => geometry.dispose());
+}
+export function clearGeometries(root) {
+  const children = [...root.children];
+  root.clear();
+  disposeGeometries(children);
 }

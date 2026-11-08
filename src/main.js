@@ -61,6 +61,9 @@ let layout;
 let displayView;
 let viewLayoutSource;
 let viewSignature;
+// The last fog projection, so toggling fog off and on without new visits hands
+// the renderer the same layout reference and it restores the retained build.
+let fogViewCache;
 let inspector;
 let batchInspector;
 let partyInspector;
@@ -382,7 +385,17 @@ function refreshPresentation({ resetView = false } = {}) {
   workspaceControls.syncFog(Boolean(campaign.fogOfWar));
   const signature = visibility ? world.cells.map((cell) => visibility.get(cell.key)).join(',') : '';
   if (viewLayoutSource === layout && viewSignature === signature) return;
-  displayView = createFogView(world, layout, visibility);
+  if (!visibility) displayView = { world, layout };
+  else if (
+    fogViewCache?.world === world &&
+    fogViewCache.layout === layout &&
+    fogViewCache.signature === signature
+  )
+    displayView = fogViewCache.view;
+  else {
+    displayView = createFogView(world, layout, visibility);
+    fogViewCache = { world, layout, signature, view: displayView };
+  }
   viewLayoutSource = layout;
   viewSignature = signature;
   cellsByKey = new Map(displayView.world.cells.map((cell) => [cell.key, cell]));

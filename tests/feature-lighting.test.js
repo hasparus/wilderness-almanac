@@ -449,3 +449,40 @@ test('city light crosses shared bevels onto dry neighbours, stopping at water, f
     lighting.dispose();
   }
 });
+
+test('a fog projection keeps the full layout lighting resident until the layout changes', () => {
+  const world = generateWorld('7');
+  const layout = prepareMap(world, generateDressing(world, 0));
+  const registry = createMapMaterials(),
+    meshes = createMapMeshes(registry),
+    lighting = createFeatureLighting(new THREE.Scene());
+  try {
+    meshes.setMap(layout);
+    lighting.setSources(meshes.lightSources, layout);
+    const glow = [...lighting.group.children],
+      beams = [...lighting.beamGroup.children];
+    let disposed = 0;
+    for (const mesh of glow) mesh.geometry.addEventListener('dispose', () => disposed++);
+    const key = meshes.lightSources[0].tile.key;
+    const states = new Map(
+      world.cells.map((cell) => [cell.key, cell.key === key ? 'visited' : 'undiscovered']),
+    );
+    const fogged = createFogView(world, layout, states).layout;
+    meshes.setMap(fogged);
+    assert.equal(lighting.setSources(meshes.lightSources, fogged), true);
+    assert.notDeepEqual(lighting.group.children, glow);
+    assert.equal(disposed, 0, 'the full lighting survives while fog is on');
+    meshes.setMap(layout);
+    assert.equal(lighting.setSources(meshes.lightSources, layout), true);
+    assert.deepEqual(lighting.group.children, glow, 'fog off restores the retained glow batches');
+    assert.deepEqual(lighting.beamGroup.children, beams);
+    assert.equal(lighting.setSources(meshes.lightSources, layout), false);
+    meshes.setMap([...layout]);
+    lighting.setSources(meshes.lightSources, [...layout]);
+    assert.equal(disposed, glow.length, 'a new layout releases the retained lighting');
+  } finally {
+    lighting.dispose();
+    meshes.dispose();
+    registry.dispose();
+  }
+});
