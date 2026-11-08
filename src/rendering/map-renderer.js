@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { createMapMaterials } from './map-materials.js';
 import { createMapMeshes } from './map-meshes.js';
+import { createMapBuilds } from './map-builds.js';
+import { createMapPicker } from './map-picking.js';
 import { createMapControls } from './map-controls.js';
 import { createAmbientLoop } from './ambient-motion.js';
 import { createPartyToken } from './party-token.js';
@@ -84,7 +86,34 @@ export function createMapRenderer(
       : new THREE.Color(backgroundColor ?? palette.background());
   }
   const meshes = createMapMeshes(palette, { artStyle });
-  scene.add(meshes.group);
+  // The stage frames everything shown; only the map build is pickable.
+  const stage = new THREE.Group();
+  stage.add(meshes.group);
+  scene.add(stage);
+  const builds = createMapBuilds({
+    build(layout, style) {
+      const map = meshes.build(layout, { artStyle: style });
+      const lighting = featureLighting.build(map.lightSources, layout, { artStyle: style });
+      return { map, lighting, picker: null };
+    },
+    attach(record) {
+      meshes.attach(record.map);
+      featureLighting.attach(record.lighting);
+    },
+    detach(record) {
+      meshes.detach(record.map);
+      featureLighting.detach(record.lighting);
+    },
+    release(record) {
+      meshes.release(record.map);
+      featureLighting.release(record.lighting);
+    },
+  });
+  function picker() {
+    const record = builds.active();
+    if (!record) return () => null;
+    return (record.picker ??= createMapPicker(meshes.group));
+  }
   const party = onPartyMove
     ? createPartyToken({ host, draw, onMove: onPartyMove, onSelect: onPartySelect, artStyle })
     : null;
@@ -96,9 +125,9 @@ export function createMapRenderer(
     host,
     renderer,
     scene,
-    map: meshes.group,
+    map: stage,
     cells: meshes.cells,
-    picker: meshes.picker,
+    picker,
     materials: palette.materials,
     draw,
     requestHover: queueFrame,
@@ -168,13 +197,13 @@ export function createMapRenderer(
       previewPiece?.dispose();
       previewPiece = null;
       if (options?.resetView) party?.deselect();
-      meshes.setMap(layout, { artStyle });
+      // A fog projection names its source layout so the source build is kept.
+      builds.show(layout, options?.source ?? layout, artStyle);
       if (previousStyle === 'pixelart' && artStyle !== previousStyle)
         palette.releasePixelMaterials();
       party?.setArtStyle(artStyle);
       renderer.domElement.dataset.artStyle = artStyle;
       daylight.sun.shadow.needsUpdate = true;
-      featureLighting.setSources(meshes.lightSources, layout, { artStyle });
       controls.refresh(options);
     },
     cancelInteraction: controls.cancelInteraction,
@@ -199,12 +228,12 @@ export function createMapRenderer(
       artStyle = mapArtStyle(styleOfArt);
       previewPiece?.group.removeFromParent();
       previewPiece?.dispose();
-      meshes.setMap([], { artStyle });
+      const empty = [];
+      builds.show(empty, empty, artStyle);
       if (previousStyle === 'pixelart' && artStyle !== previousStyle)
         palette.releasePixelMaterials();
-      featureLighting.setSources([], [], { artStyle });
       previewPiece = createPartyPiece(PARTY_STYLES.indexOf(style), color, artStyle);
-      meshes.group.add(previewPiece.group);
+      stage.add(previewPiece.group);
       daylight.sun.shadow.needsUpdate = true;
       controls.refresh({ resetView: true, fitContent: true });
     },
@@ -229,6 +258,7 @@ export function createMapRenderer(
       previewPiece?.group.removeFromParent();
       previewPiece?.dispose();
       controls.dispose();
+      builds.clear();
       meshes.dispose();
       featureLighting.dispose();
       daylight.dispose();

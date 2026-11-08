@@ -450,36 +450,39 @@ test('city light crosses shared bevels onto dry neighbours, stopping at water, f
   }
 });
 
-test('a fog projection keeps the full layout lighting resident until the layout changes', () => {
+test('lighting records attach, detach and reattach the same glow batches', () => {
   const world = generateWorld('7');
   const layout = prepareMap(world, generateDressing(world, 0));
   const registry = createMapMaterials(),
     meshes = createMapMeshes(registry),
     lighting = createFeatureLighting(new THREE.Scene());
   try {
-    meshes.setMap(layout);
-    lighting.setSources(meshes.lightSources, layout);
-    const glow = [...lighting.group.children],
-      beams = [...lighting.beamGroup.children];
+    const map = meshes.build(layout);
+    const record = lighting.build(map.lightSources, layout);
+    assert.equal(lighting.group.children.length, 0, 'building does not touch the scene');
+    assert.ok(record.glow.length > 0 && record.beams.length > 0);
     let disposed = 0;
-    for (const mesh of glow) mesh.geometry.addEventListener('dispose', () => disposed++);
-    const key = meshes.lightSources[0].tile.key;
-    const states = new Map(
-      world.cells.map((cell) => [cell.key, cell.key === key ? 'visited' : 'undiscovered']),
+    for (const mesh of record.glow) mesh.geometry.addEventListener('dispose', () => disposed++);
+    lighting.attach(record);
+    assert.deepEqual(lighting.group.children, record.glow);
+    assert.deepEqual(lighting.beamGroup.children, record.beams);
+    lighting.setMode('night');
+    lighting.update(0, camera());
+    assert.ok(lighting.points.some((light) => light.intensity > 0));
+    lighting.detach(record);
+    assert.equal(lighting.group.children.length, 0);
+    lighting.update(0, camera());
+    assert.ok(
+      lighting.points.every((light) => light.intensity === 0),
+      'detached sources go dark',
     );
-    const fogged = createFogView(world, layout, states).layout;
-    meshes.setMap(fogged);
-    assert.equal(lighting.setSources(meshes.lightSources, fogged), true);
-    assert.notDeepEqual(lighting.group.children, glow);
-    assert.equal(disposed, 0, 'the full lighting survives while fog is on');
-    meshes.setMap(layout);
-    assert.equal(lighting.setSources(meshes.lightSources, layout), true);
-    assert.deepEqual(lighting.group.children, glow, 'fog off restores the retained glow batches');
-    assert.deepEqual(lighting.beamGroup.children, beams);
-    assert.equal(lighting.setSources(meshes.lightSources, layout), false);
-    meshes.setMap([...layout]);
-    lighting.setSources(meshes.lightSources, [...layout]);
-    assert.equal(disposed, glow.length, 'a new layout releases the retained lighting');
+    assert.equal(disposed, 0);
+    lighting.attach(record);
+    assert.deepEqual(lighting.group.children, record.glow);
+    lighting.detach(record);
+    lighting.release(record);
+    assert.equal(disposed, record.glow.length);
+    meshes.release(map);
   } finally {
     lighting.dispose();
     meshes.dispose();

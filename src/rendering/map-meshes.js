@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { addMesh, clearGeometries, disposeGeometries } from './geometry.js';
-import { createBuildCache } from './build-cache.js';
-import { createMapPicker } from './map-picking.js';
 import { windWeight } from './ambient-motion.js';
 import { createTerrainBuilder } from './terrain-meshes.js';
 import { createNatureBuilder } from './nature-props.js';
@@ -110,47 +108,43 @@ export function createMapMeshes(
     });
   }
   configure(artStyle);
-  // The full build stays resident while a fog projection is shown, so turning
-  // fog off restores it without a rebuild. See build-cache.js.
-  const builds = createBuildCache({
-    attach(build) {
-      clearGeometries(map);
-      map.add(...build.children);
-      cells.push(...build.cells);
-      lightSources.push(...build.lightSources);
-      if (build.wave) waveDirection.value.copy(build.wave);
-    },
-    detach(build) {
-      map.remove(...build.children);
-      cells.length = 0;
-      lightSources.length = 0;
-    },
-    release: (build) => disposeGeometries(build.children),
-  });
-  function setMap(layout, options = {}) {
-    const nextStyle = options.artStyle !== undefined ? mapArtStyle(options.artStyle) : style;
-    return builds.set(layout, nextStyle, () => {
-      // Style-specific materials may be released after this call; the cache
-      // has already dropped every build of the previous style.
-      if (nextStyle !== style) configure(nextStyle);
-      clearGeometries(map);
-      buildMap(layout);
-      return {
-        children: [...map.children],
-        cells: cells.slice(),
-        lightSources: lightSources.slice(),
-        wave: layout.some((tile) => tile.props.some((prop) => prop.kind === 'wave'))
-          ? waveDirection.value.clone()
-          : null,
-      };
-    });
+  // A build is a detached record; attach/detach move it in and out of the map
+  // without rebuilding, release disposes it. The renderer decides which records
+  // to keep (see map-builds.js); setMap is the plain replace-everything path.
+  let attached = null;
+  function build(layout, options = {}) {
+    if (options.artStyle !== undefined && mapArtStyle(options.artStyle) !== style)
+      configure(options.artStyle);
+    return buildMap(layout);
   }
-  function buildMap(layout) {
+  function attach(record) {
+    for (const child of record.children) map.add(child);
+    cells.push(...record.cells);
+    lightSources.push(...record.lightSources);
+    if (record.wave) waveDirection.value.copy(record.wave);
+    attached = record;
+  }
+  function detach(record) {
+    for (const child of record.children) map.remove(child);
     cells.length = 0;
     lightSources.length = 0;
+    attached = null;
+  }
+  const release = (record) => disposeGeometries(record.children);
+  function setMap(layout, options) {
+    const previous = attached;
+    if (previous) {
+      detach(previous);
+      release(previous);
+    }
+    attach(build(layout, options));
+  }
+  function buildMap(layout) {
+    const root = new THREE.Group();
+    const record = { children: root.children, cells: [], lightSources: [], wave: null };
     const propBatches = new Map();
     const wave = layout.flatMap((cell) => cell.props).find((prop) => prop.kind === 'wave');
-    if (wave) waveDirection.value.set(Math.cos(wave.angle), Math.sin(wave.angle));
+    if (wave) record.wave = new THREE.Vector2(Math.cos(wave.angle), Math.sin(wave.angle));
     for (const data of layout) {
       pendingLights = [];
       const { g, content } = makeTerrain(data);
@@ -199,7 +193,7 @@ export function createMapMeshes(
       propRoot.updateWorldMatrix(true, true);
       if (!data.fogState || data.fogState === 'visited')
         for (const { parent, ...source } of pendingLights)
-          lightSources.push({ ...source, matrix: parent.matrixWorld.clone(), tile: data });
+          record.lightSources.push({ ...source, matrix: parent.matrixWorld.clone(), tile: data });
       propRoot.traverse((object) => {
         if (!object.isMesh) return;
         const pixelProp = Boolean(
@@ -279,8 +273,8 @@ export function createMapMeshes(
       g.traverse((o) => {
         if (o.isMesh) o.userData.key = data.key;
       });
-      map.add(g);
-      cells.push({ ...data, g });
+      root.add(g);
+      record.cells.push({ ...data, g });
     }
     pendingLights = [];
     for (const batch of propBatches.values()) {
@@ -291,7 +285,7 @@ export function createMapMeshes(
         geometry.computeBoundingSphere();
         geometry.boundingSphere.radius += 0.35; // Include the strongest wind gust.
       }
-      const mesh = addMesh(map, geometry, batch.material);
+      const mesh = addMesh(root, geometry, batch.material);
       mesh.castShadow = batch.castShadow;
       mesh.userData.faceRanges = batch.faceRanges.concat(
         batch.farFaceRanges.map(({ end, key }) => ({ end: end + batch.faces, key })),
@@ -300,21 +294,25 @@ export function createMapMeshes(
         installFoliageLOD(mesh, batch.faces * 3, batch.farFaces * 3, batch.pixelSize);
       if (batch.material.userData.treeSway) mesh.customDepthMaterial = treeDepth;
     }
+    // Reparenting on attach empties root.children; keep our own list.
+    record.children = [...root.children];
+    return record;
   }
   return {
     group: map,
     cells,
     lightSources,
+    build,
+    attach,
+    detach,
+    release,
     setMap,
-    // Map objects are static once built, so a build keeps its picker and a
-    // restored build needs no new range bounds. Extra objects fall back.
-    picker() {
-      const build = builds.current();
-      if (!build || map.children.length !== build.children.length) return createMapPicker(map);
-      return (build.picker ??= createMapPicker(map));
-    },
     dispose() {
-      builds.clear();
+      const record = attached;
+      if (record) {
+        detach(record);
+        release(record);
+      }
       clearGeometries(map);
       cells.length = 0;
       lightSources.length = 0;

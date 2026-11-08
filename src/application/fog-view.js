@@ -83,3 +83,15 @@ export function createFogView(world, layout, states) {
     layout: tiles,
   };
 }
+
+// Reuse a projection while its inputs are unchanged. The session hands out the
+// same visibility Map for identical classifications, so the renderer receives a
+// stable layout reference and can restore the build it retained for it.
+export function createFogViewer() {
+  let last;
+  return (world, layout, states) => {
+    if (last?.world !== world || last.layout !== layout || last.states !== states)
+      last = { world, layout, states, view: createFogView(world, layout, states) };
+    return last.view;
+  };
+}

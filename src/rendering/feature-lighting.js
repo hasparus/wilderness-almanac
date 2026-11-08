@@ -12,7 +12,6 @@ import {
   updateWaterLanding,
   softenBeamEnd,
 } from './lighthouse-beams.js';
-import { createBuildCache } from './build-cache.js';
 export { lighthouseTarget } from './lighthouse-beams.js';
 
 const COLORS = { warm: '#ffd269', mystic: '#9b79ff', dungeon: '#f65b49' };
@@ -194,40 +193,42 @@ export function createFeatureLighting(scene) {
   const aim = new THREE.Vector3(),
     direction = new THREE.Vector3(),
     focus = new THREE.Vector3();
-  // Glow batches follow the map build: the full layout's lighting stays
-  // resident while a fog projection is shown. See build-cache.js.
-  const builds = createBuildCache({
-    attach(build) {
-      group.add(...build.glow);
-      beamGroup.add(...build.beams);
-      sources = build.sources;
-      lighthouses = build.lighthouses;
-    },
-    detach() {
-      group.clear();
-      beamGroup.clear();
-      sources = [];
-      lighthouses = [];
-    },
-    release(build) {
-      for (const mesh of build.glow) mesh.geometry.dispose();
-      for (const source of build.lighthouses) {
-        source.landing.geometry.dispose();
-        source.landing.material.dispose();
-        source.mesh.material.dispose();
-      }
-    },
-  });
-  function setSources(entries, cells, { artStyle = 'low-poly' } = {}) {
-    return builds.set(cells, artStyle, () => {
-      build(entries, cells, artStyle);
-      return { glow: [...group.children], beams: [...beamGroup.children], sources, lighthouses };
-    });
+  // A build is a detached record of glow batches, lighthouse nodes and their
+  // animation state; the renderer keeps and restores records (see map-builds.js).
+  let attached = null;
+  function attach(record) {
+    for (const mesh of record.glow) group.add(mesh);
+    for (const node of record.beams) beamGroup.add(node);
+    sources = record.sources;
+    lighthouses = record.lighthouses;
+    attached = record;
   }
-  function build(entries, cells, artStyle) {
-    const pixel = artStyle === 'pixelart';
+  function detach(record) {
+    for (const mesh of record.glow) group.remove(mesh);
+    for (const node of record.beams) beamGroup.remove(node);
     sources = [];
     lighthouses = [];
+    attached = null;
+  }
+  function release(record) {
+    for (const mesh of record.glow) mesh.geometry.dispose();
+    for (const source of record.lighthouses) {
+      source.landing.geometry.dispose();
+      source.landing.material.dispose();
+      source.mesh.material.dispose();
+    }
+  }
+  function setSources(entries, cells, options) {
+    const previous = attached;
+    if (previous) {
+      detach(previous);
+      release(previous);
+    }
+    attach(build(entries, cells, options));
+  }
+  function build(entries, cells, { artStyle = 'low-poly' } = {}) {
+    const pixel = artStyle === 'pixelart';
+    const built = { glow: [], beams: [], sources: [], lighthouses: [] };
     const batches = new Map();
     const byKey = new Map(cells.map((cell) => [cell.key, cell]));
     function add(key, geometry) {
@@ -251,7 +252,7 @@ export function createFeatureLighting(scene) {
         strength: pixel && feature === 'city' ? 0.7 : enhanced ? GLOW_STRENGTH : 1,
         ...glowTiming(source, position),
       };
-      sources.push(record);
+      built.sources.push(record);
       const window = new THREE.PlaneGeometry(...source.size.map((size) => size * radiusScale));
       window.translate(...source.position).applyMatrix4(source.matrix);
       add(`${kind}:window`, addGlowTiming(window, record));
@@ -300,8 +301,8 @@ export function createFeatureLighting(scene) {
           const landing = createWaterLanding(position, cells, texture, COLORS.warm, { artStyle });
           const node = new THREE.Group();
           node.add(mesh, landing);
-          beamGroup.add(node);
-          lighthouses.push({ ...record, sweep, mesh, landing, aim: new THREE.Vector3() });
+          built.beams.push(node);
+          built.lighthouses.push({ ...record, sweep, mesh, landing, aim: new THREE.Vector3() });
         }
       }
     }
@@ -310,8 +311,9 @@ export function createFeatureLighting(scene) {
       geometries.forEach((item) => item.dispose());
       const mesh = new THREE.Mesh(geometry, materials.get(key));
       mesh.name = key;
-      group.add(mesh);
+      built.glow.push(mesh);
     }
+    return built;
   }
   function update(time, camera) {
     const strength = DAYLIGHT[mode].glow;
@@ -385,13 +387,21 @@ export function createFeatureLighting(scene) {
     beamGroup,
     points,
     beams,
+    build,
+    attach,
+    detach,
+    release,
     setSources,
     setMode(value) {
       mode = timeOfDay(value);
     },
     update,
     dispose() {
-      builds.clear();
+      const record = attached;
+      if (record) {
+        detach(record);
+        release(record);
+      }
       group.removeFromParent();
       beamGroup.removeFromParent();
       for (const light of points) light.removeFromParent();
