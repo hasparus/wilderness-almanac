@@ -1,4 +1,4 @@
-import { BufferGeometry, BufferAttribute, Matrix3, Matrix4, Vector3 } from 'three';
+import { Box3, BufferGeometry, BufferAttribute, Matrix3, Matrix4, Sphere, Vector3 } from 'three';
 import { windWeight } from './ambient-motion.js';
 
 function isFloatAttribute(attribute, itemSize) {
@@ -21,26 +21,39 @@ export function describePropPart(geometry, matrix, { expand, compact, base, wind
     (texture && !isFloatAttribute(texture, 2))
   )
     throw new Error('Prop batches require unnormalized Float32 position/normal/UV attributes');
+  return describePropTemplate(
+    {
+      position: position.array,
+      normal: normal.array,
+      uv: texture?.array,
+      index: geometry.index?.array,
+    },
+    matrix,
+    { expand, compact, base, wind, phase, uv },
+  );
+}
+
+export function describePropTemplate(template, matrix, { expand, compact, base, wind, phase, uv }) {
   return {
-    position: position.array,
-    normal: normal.array,
-    uv: texture?.array,
-    index: geometry.index?.array,
+    position: template.position,
+    normal: template.normal,
+    uv: uv ? template.uv : undefined,
+    index: template.index,
     matrix: matrix.elements,
     expand,
     compact,
     base,
     wind,
     phase,
-    count: expand ? geometry.index.count : position.count,
-    faces: (geometry.index?.count ?? position.count) / 3,
+    count: expand ? template.index.length : template.position.length / 3,
+    faces: (template.index?.length ?? template.position.length / 3) / 3,
   };
 }
 
 function packParts(parts) {
-  const compact = parts[0].compact;
-  const textured = !!parts[0].uv;
-  const indexed = !!parts[0].index && !parts[0].expand;
+  const compact = parts[0]?.compact;
+  const textured = !!parts[0]?.uv;
+  const indexed = !!parts[0]?.index && !parts[0].expand;
   let vertices = 0,
     indexCount = 0;
   for (const part of parts) {
@@ -71,6 +84,12 @@ function packParts(parts) {
     normalMatrix = new Matrix3(),
     p = new Vector3(),
     n = new Vector3();
+  let minX = Infinity,
+    minY = Infinity,
+    minZ = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity,
+    maxZ = -Infinity;
   let vertexOffset = 0,
     indexOffset = 0,
     maxIndex = 0;
@@ -87,6 +106,15 @@ function packParts(parts) {
       position[output] = p.x;
       position[output + 1] = p.y;
       position[output + 2] = p.z;
+      const x = position[output],
+        y = position[output + 1],
+        z = position[output + 2];
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      minZ = Math.min(minZ, z);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+      maxZ = Math.max(maxZ, z);
       n.set(part.normal[input], part.normal[input + 1], part.normal[input + 2]).applyNormalMatrix(
         normalMatrix,
       );
@@ -119,7 +147,29 @@ function packParts(parts) {
     vertexOffset += part.count;
   }
   if (index instanceof Uint32Array && maxIndex < 65535) index = new Uint16Array(index);
-  return { position, normal, uv, swayWeight, wavePhase, index, compact };
+  const boundingBox = new Box3(new Vector3(minX, minY, minZ), new Vector3(maxX, maxY, maxZ));
+  const boundingSphere = new Sphere();
+  boundingBox.getCenter(boundingSphere.center);
+  const center = boundingSphere.center;
+  let maxRadiusSq = 0;
+  for (let i = 0; i < position.length; i += 3) {
+    const dx = center.x - position[i],
+      dy = center.y - position[i + 1],
+      dz = center.z - position[i + 2];
+    maxRadiusSq = Math.max(maxRadiusSq, dx * dx + dy * dy + dz * dz);
+  }
+  boundingSphere.radius = Math.sqrt(maxRadiusSq);
+  return {
+    position,
+    normal,
+    uv,
+    swayWeight,
+    wavePhase,
+    index,
+    compact,
+    boundingBox,
+    boundingSphere,
+  };
 }
 
 export function mergePropParts(parts) {
@@ -138,5 +188,7 @@ export function mergePropParts(parts) {
         new BufferAttribute(arrays[name], itemSize, arrays.compact && name !== 'position'),
       );
   if (arrays.index) geometry.setIndex(new BufferAttribute(arrays.index, 1));
+  geometry.boundingBox = arrays.boundingBox;
+  geometry.boundingSphere = arrays.boundingSphere;
   return geometry;
 }

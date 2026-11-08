@@ -98,6 +98,25 @@ for (const artStyle of ['low-poly', 'pixelart'])
     });
     try {
       meshes.setMap(layout);
+      let batches = 0,
+        padded = 0;
+      meshes.group.traverse((object) => {
+        if (!object.userData.faceRanges) return;
+        batches++;
+        const expected = new BufferGeometry();
+        expected.setAttribute('position', object.geometry.attributes.position);
+        expected.computeBoundingBox();
+        expected.computeBoundingSphere();
+        if (object.material.userData.pixelFoliage || object.material.userData.pixelDressing) {
+          expected.boundingSphere.radius += 0.35;
+          padded++;
+        }
+        assert.deepEqual(object.geometry.boundingBox, expected.boundingBox);
+        assert.deepEqual(object.geometry.boundingSphere, expected.boundingSphere);
+        expected.dispose();
+      });
+      assert.ok(batches > 0);
+      if (artStyle === 'pixelart') assert.ok(padded > 0);
       const first = meshDigest(meshes.group);
       meshes.setMap(layout);
       assert.deepEqual(meshDigest(meshes.group), first);

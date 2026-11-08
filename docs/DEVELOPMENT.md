@@ -64,7 +64,12 @@ Keep Three.js behind the lazy `src/ui/map-view.js` entry. The menu and Inspector
 share a still-preview renderer; do not introduce per-hex WebGL contexts. Mesh
 builders stay independent of browser lifecycle. `prop-batches.js` writes component
 transforms, index expansion and packed foliage directly into final batch buffers;
-source arrays stay unchanged and component geometries are disposed once.
+source arrays stay unchanged and component geometries are disposed once. Packing
+also accumulates bounds from the final Float32 positions and computes the exact
+bounding sphere with one radius pass. Pixel crown/dressing templates share read-only
+typed arrays, not geometries or attributes; far crowns feed those arrays directly
+to the batch writer. Transform meshes or owned output buffers, never template-backed
+geometry in place.
 Scene, controls, geometry, materials, textures, preview jobs and listeners each have
 explicit disposal owners.
 

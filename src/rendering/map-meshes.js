@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { describePropPart, mergePropParts } from './prop-batches.js';
+import { describePropPart, describePropTemplate, mergePropParts } from './prop-batches.js';
 import { addMesh, disposeGeometries } from './geometry.js';
 import { createTerrainBuilder } from './terrain-meshes.js';
 import { createNatureBuilder } from './nature-props.js';
@@ -10,7 +10,7 @@ import { createPoiBuilder } from './poi-props.js';
 import { createSettlementBuilder, roofGeometry } from './settlement-props.js';
 import { createRoadBuilder } from './roads.js';
 import { pixelModelMesh, steppedRoofGeometry } from './pixel-model-geometry.js';
-import { crownGeometry } from './pixel-foliage-geometry.js';
+import { crownTemplate } from './pixel-foliage-geometry.js';
 import { installFoliageLOD } from './foliage-lod.js';
 
 // Own map geometry and prop batches; the material registry outlives rebuilds.
@@ -228,15 +228,21 @@ export function createMapMeshes(
           });
         const batch = propBatches.get(batchKey);
         for (const far of foliage ? [false, true] : [false]) {
-          const geometry = far ? crownGeometry(object.userData.foliageFar) : object.geometry;
-          const part = describePropPart(geometry, object.matrixWorld, {
+          const options = {
             expand: !far && Boolean(object.geometry.index && !pixelProp),
             compact: foliage,
             base,
             wind: plant?.userData.wind,
             phase: object.userData.wavePhase ?? 0,
             uv: Boolean(object.material.map),
-          });
+          };
+          const part = far
+            ? describePropTemplate(
+                crownTemplate(object.userData.foliageFar),
+                object.matrixWorld,
+                options,
+              )
+            : describePropPart(object.geometry, object.matrixWorld, options);
           const faces = part.faces;
           if (far) {
             batch.farParts.push(part);
@@ -247,7 +253,6 @@ export function createMapMeshes(
             batch.faces += faces;
             batch.faceRanges.push({ end: batch.faces, key: data.key });
           }
-          if (far) geometry.dispose();
         }
         if (foliage)
           batch.pixelSize = Math.max(
@@ -267,10 +272,8 @@ export function createMapMeshes(
     for (const batch of propBatches.values()) {
       const parts = [...batch.parts, ...batch.farParts];
       const geometry = mergePropParts(parts);
-      if (batch.material.userData.pixelFoliage || batch.material.userData.pixelDressing) {
-        geometry.computeBoundingSphere();
+      if (batch.material.userData.pixelFoliage || batch.material.userData.pixelDressing)
         geometry.boundingSphere.radius += 0.35; // Include the strongest wind gust.
-      }
       const mesh = addMesh(root, geometry, batch.material);
       mesh.castShadow = batch.castShadow;
       mesh.userData.faceRanges = batch.faceRanges.concat(
