@@ -263,7 +263,7 @@ function presentCampaign({ resetView = false } = {}) {
   batchInspector.reset();
   root.hidden = false;
   if (!renderer)
-    renderer = mapView.createMapRenderer(element('scene'), {
+    renderer = mapView.createCampaignMapRenderer(element('scene'), {
       motion: movement,
       touchMultiSelect: true,
       onPartyMove: mapSelection.moveParty,

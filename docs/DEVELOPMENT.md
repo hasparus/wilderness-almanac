@@ -1,7 +1,9 @@
 # Development guide
 
-Wilderness Almanac uses vanilla JavaScript ES modules, Vite and pinned Three.js
-0.160.1. Generation and campaign data are independent of the DOM and Three.js.
+Wilderness Almanac uses JavaScript ES modules, Vite and pinned Three.js 0.160.1.
+The DOM UI stays framework-free; campaign maps use React 19.3.1 and React Three
+Fiber 9.8.2 for retained chunk ownership. Generation and campaign data are
+independent of the DOM and Three.js.
 IndexedDB stores browser campaigns; an optional Node/SQLite API stores explicit
 account copies. See [project state](PROJECT_STATE.md), [repository instructions](../AGENTS.md),
 and the [user guide](USER_GUIDE.md).
@@ -12,19 +14,20 @@ Use Node.js 24 or later. Install frontend dependencies with `npm ci`; start Vite
 with `npm run dev`. The browser-only app needs no environment variables. Backend
 work additionally needs `npm ci --prefix server`; see [self-hosting](SELF_HOSTING.md).
 
-| Command                  | Purpose                                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------------------- |
-| `npm run lint`           | ESLint correctness and unused-variable checks across application, backend, tests and tooling |
-| `npm run format:check`   | Check Prettier formatting                                                                    |
-| `npm test`               | Frontend Node tests                                                                          |
-| `npm run test:server`    | Backend auth, SQLite, proxy and backup tests                                                 |
-| `npm run build`          | Build application and website map embeds                                                     |
-| `npm run preview`        | Serve the production build                                                                   |
-| `npm run test:e2e`       | Production-build desktop and mobile browser tests; build first                               |
-| `npm run test:account`   | Source-served account dialog tests with mocked HTTP                                          |
-| `npm run test:storage`   | Source-served real IndexedDB tests                                                           |
-| `npm run test:workspace` | Source-served journal pagination, panel and workspace checks                                 |
-| `npm run check`          | Frontend lint, formatting, Node tests, build and desktop/mobile browser tests                |
+| Command                         | Purpose                                                                                      |
+| ------------------------------- | -------------------------------------------------------------------------------------------- |
+| `npm run lint`                  | ESLint correctness and unused-variable checks across application, backend, tests and tooling |
+| `npm run typecheck:incremental` | Scoped JSDoc/`@ts-check` verification for the incremental renderer and its integration tests |
+| `npm run format:check`          | Check Prettier formatting                                                                    |
+| `npm test`                      | Frontend Node tests                                                                          |
+| `npm run test:server`           | Backend auth, SQLite, proxy and backup tests                                                 |
+| `npm run build`                 | Build application and website map embeds                                                     |
+| `npm run preview`               | Serve the production build                                                                   |
+| `npm run test:e2e`              | Production-build desktop and mobile browser tests; build first                               |
+| `npm run test:account`          | Source-served account dialog tests with mocked HTTP                                          |
+| `npm run test:storage`          | Source-served real IndexedDB tests                                                           |
+| `npm run test:workspace`        | Source-served journal pagination, panel and workspace checks                                 |
+| `npm run check`                 | Frontend lint, formatting, Node tests, build and desktop/mobile browser tests                |
 
 Install browser binaries with `npx playwright install chromium`. For a focused
 Node check use `node --test tests/NAME.test.js`; for a browser subset pass a spec
@@ -88,6 +91,48 @@ The session owns campaign actions, selection and at most 20 Undo states. Derive 
 validate complete edits before one commit/save; multi-edit remains atomic. Failed
 persistence keeps live edits and history available for retry/download. Palette
 changes survive hex Undo; navigation guards unsaved form drafts.
+
+## Incremental campaign rendering
+
+`src/ui/map-view.js` exposes `createCampaignMapRenderer` for the campaign and the
+synchronous `createMapRenderer` for creation previews. Inspector thumbnails, party
+previews and website embeds retain the synchronous renderer. React/Fiber stay
+behind this lazy entry; there is one WebGL context per renderer, not one per chunk.
+
+`incremental-builds.js` owns axial 4×4 chunks, with a source and latest fog record
+per chunk. New geometry is built outside React in roughly 8 ms RAF slices (one
+chunk can exceed that budget). Fog signatures include neighboring visibility for
+river banks, shorelines and shared edges. Restrictive updates detach stale chunks
+and picking targets synchronously; newer requests cancel queued work. Source or
+art-style changes release both caches. Explicit snapshots flush pending work.
+
+`retained-chunk-scene.js` mounts memoized chunk primitives through an R3F portal.
+The build cache owns geometry disposal; React owns attachments. The existing
+renderer still owns controls, camera framing, ambient motion, shadows and the party
+overlay. `incremental-map-builds.js` supplies complete projected cell metadata
+immediately, caches pickers per chunk, and updates feature lights during partial
+reveals using the full target layout for clipping. Partial commits refresh picking
+without cancelling gestures or changing camera framing. The canvas exposes
+`data-renderer="fiber-retained"`, `data-render-state` and `aria-busy` for inspection.
+
+The standalone comparison tool has its own pinned dependencies and compares
+monolithic, native incremental, declarative Fiber and retained Fiber modes:
+
+```sh
+npm ci --prefix tools/incremental-renderer
+npm run check --prefix tools/incremental-renderer
+npm run build --prefix tools/incremental-renderer
+npm run preview --prefix tools/incremental-renderer  # http://127.0.0.1:4187
+# In another terminal; Chrome must be installed:
+SIZES=4 ROUNDS=3 WARMUPS=1 npm run compare --prefix tools/incremental-renderer
+```
+
+Set `CHROME_EXECUTABLE` for a specific Chrome binary. `VERIFY=1 ROUNDS=1` captures
+verification images separately from timing runs. Results go to ignored
+`test-results/incremental-renderer/`. The tool does not exercise campaign controls
+or the integrated lighting/picking adapter; use the application and
+`e2e/incremental-renderer.spec.js` for that boundary. Detailed measurements and
+trade-offs belong in the PR description, not a separate performance document.
 
 ## Focused references
 

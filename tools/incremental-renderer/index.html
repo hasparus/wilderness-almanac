@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="data:," />
+    <title>Incremental renderer experiment</title>
+    <style>
+      body {
+        background: #222;
+        color: #eee;
+        font: 14px monospace;
+      }
+      canvas {
+        display: block;
+        width: 960px;
+        height: 720px;
+      }
+      pre {
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <p>
+      Isolated renderer experiment, not the application. Reload between trials. Chunk swaps have no
+      fades; intermediate feature lighting and application controls are not implemented.
+    </p>
+    <label
+      >Mode
+      <select id="mode">
+        <option>native</option>
+        <option>fiber</option>
+        <option>fiber-retained</option>
+        <option>monolithic</option>
+      </select></label
+    >
+    <label
+      >Style
+      <select id="style">
+        <option>low-poly</option>
+        <option>pixelart</option>
+      </select></label
+    >
+    <label
+      >Axial width
+      <select id="size">
+        <option>4</option>
+        <option>8</option>
+        <option>1</option>
+      </select></label
+    >
+    <button id="run">Run one trial</button><canvas></canvas>
+    <pre id="out"></pre>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

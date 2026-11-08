@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src/rendering/incremental-*.js",
+    "src/rendering/retained-chunk-scene.js",
+    "src/rendering/map-renderer.js",
+    "src/rendering/map-controls.js",
+    "src/ui/map-view.js",
+    "tests/incremental-builds.test.js",
+    "e2e/incremental-renderer.spec.js"
+  ]
+}

@@ -166,6 +166,12 @@ or backend requests. The 22 card images are by YY Game and retain their
 
 Fog derives visited, visible-unvisited and undiscovered presentation from saved
 visits; structural editing requires fog off. See [fog rules](FOG_OF_WAR.md).
+Campaign maps render incrementally through retained React Three Fiber chunks;
+creation previews, thumbnails and embeds keep the synchronous renderer. Fog
+concealment and stale-work cancellation are immediate, while uncached reveals
+arrive over multiple frames. Chunking favors early progress and localized visits,
+not minimum draw calls or the shortest full-map reveal. See the
+[renderer ownership contract](DEVELOPMENT.md#incremental-campaign-rendering).
 The UI theme is independent of map palette and lighting. Appearance choices stage
 until Save, except immediate map regeneration. See [design system](DESIGN_SYSTEM.md).
 Low poly remains the default; Pixelart carries a resource warning and shares the
