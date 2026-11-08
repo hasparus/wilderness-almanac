@@ -6,8 +6,11 @@ import { createIncrementalBuilds, partitionChunks } from '../src/rendering/incre
 /** @typedef {import('../src/rendering/incremental-builds.js').ChunkTile} Tile */
 /** @typedef {{id: number, tiles: Tile[], style: string}} Record */
 
-/** Deterministic scheduler; each build exhausts the budget. */
-function harness() {
+/**
+ * Deterministic scheduler; each build exhausts the budget.
+ * @param {Pick<import('../src/rendering/incremental-builds.js').IncrementalOptions<Tile, Record>, 'priority' | 'preparePriority'>} [priorities]
+ */
+function harness(priorities = {}) {
   let serial = 0,
     clock = 0,
     frame = 0;
@@ -23,6 +26,7 @@ function harness() {
   let target = [];
   let pending = false;
   const controller = createIncrementalBuilds({
+    ...priorities,
     /** @param {Tile[]} tiles @param {string} style */
     build(tiles, style) {
       const record = { id: ++serial, tiles, style };
@@ -171,6 +175,56 @@ test('cancelled RAF callbacks cannot publish or release records from a newer req
   assert.equal(h.built.length, 3);
   assert.ok(
     h.built.every((record) => record.tiles.every((tile) => tile.fogState === 'undiscovered')),
+  );
+});
+
+test('priority reads the latest focus at each slice, scoring each pending chunk once', () => {
+  let focus = 0,
+    preparedFocus = 0,
+    preparations = 0;
+  /** @type {number[]} */
+  const scored = [];
+  const h = harness({
+    preparePriority() {
+      preparedFocus = focus;
+      preparations++;
+    },
+    priority(chunk) {
+      scored.push(chunk[0].q);
+      return Math.abs(chunk[0].q - preparedFocus);
+    },
+  });
+  const source = tiles([0, 4, 8, 12]);
+  h.controller.show(source, source, 'low-poly');
+  assert.equal(preparations, 0, 'show precedes camera framing/focus');
+  assert.deepEqual(scored, []);
+  focus = 8;
+  h.tick();
+  assert.deepEqual(scored, [0, 4, 8, 12]);
+  assert.equal(h.built[0].tiles[0].q, 8);
+  focus = 12;
+  h.tick();
+  assert.equal(h.built[1].tiles[0].q, 12);
+  assert.equal(scored.length, 7, 'three pending chunks scored once in second slice');
+  h.controller.flush();
+  assert.equal(h.built.length, 4, 'offscreen chunks still build for snapshots');
+  assert.equal(scored.length, 10);
+  assert.equal(preparations, 4);
+  assert.equal(h.view().pending, false);
+  assert.equal(h.frames.size, 0);
+  h.controller.show(source, source, 'low-poly');
+  assert.equal(h.built.length, 4, 'source cache remains immediate');
+  assert.equal(preparations, 4);
+});
+
+test('equal priority uses deterministic chunk IDs, independent of previous ranking', () => {
+  const h = harness({ priority: () => 0 });
+  const source = tiles([8, 0, 4]);
+  h.controller.show(source, source, 'low-poly');
+  h.controller.flush();
+  assert.deepEqual(
+    h.built.map((record) => record.tiles[0].q),
+    [0, 4, 8],
   );
 });
 

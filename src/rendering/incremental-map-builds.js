@@ -4,6 +4,7 @@ import { createIncrementalBuilds } from './incremental-builds.js';
 import { createRetainedChunkScene } from './retained-chunk-scene.js';
 import { createMapPicker } from './map-picking.js';
 import { createChunkTransitions } from './chunk-transitions.js';
+import { chunkPriorityBounds, viewportPriority } from './viewport-priority.js';
 
 /** @typedef {import('./incremental-builds.js').ChunkTile & {wx: number, wz: number, top: number, props: {kind: string, angle?: number}[]}} Tile */
 /** @typedef {{root: Group, cells: unknown[], lightSources: unknown[], wave: Vector2 | null}} MeshRecord */
@@ -36,6 +37,8 @@ export function createIncrementalMapBuilds(context) {
   container.name = 'incremental-map';
   const owner = createRetainedChunkScene({ renderer, scene, camera, container, draw });
   const point = new Vector3();
+  /** @type {WeakMap<Tile[], import('./viewport-priority.js').ChunkBounds>} */
+  const priorityBounds = new WeakMap();
   /** @type {Presentation | null} */
   let active = null;
   /** @type {Tile[] | null} */
@@ -129,14 +132,18 @@ export function createIncrementalMapBuilds(context) {
       transitions.release(record.map.root);
       context.release(record);
     },
+    preparePriority() {
+      camera.updateMatrixWorld();
+      camera.updateProjectionMatrix();
+    },
     /** @param {Tile[]} tiles @returns {number} */
     priority(tiles) {
-      point.set(0, 0, 0);
-      for (const tile of tiles) point.add(new Vector3(tile.wx, tile.top, tile.wz));
-      point.multiplyScalar(1 / tiles.length).project(camera);
-      return (
-        (Math.abs(point.x) > 1 || Math.abs(point.y) > 1 ? 10 : 0) + point.x ** 2 + point.y ** 2
-      );
+      let bounds = priorityBounds.get(tiles);
+      if (!bounds) {
+        bounds = chunkPriorityBounds(tiles);
+        priorityBounds.set(tiles, bounds);
+      }
+      return viewportPriority(bounds, (x, y, z) => point.set(x, y, z).project(camera));
     },
     /** @param {import('./incremental-builds.js').ChunkEntry<Record>[]} entries @param {Tile[]} layout @param {boolean} pending @returns {void} */
     show(entries, layout, pending) {

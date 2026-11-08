@@ -12,6 +12,7 @@ import { DIRECTIONS } from '../generation/hex.js';
  * @property {(entries: ChunkEntry<Record>[], layout: Tile[], pending: boolean) => void} show
  * @property {(record: Record) => void} release
  * @property {(tiles: Tile[]) => number} [priority]
+ * @property {() => void} [preparePriority]
  * @property {(callback: FrameRequestCallback) => number} [schedule]
  * @property {(handle: number) => void} [cancel]
  * @property {() => number} [now]
@@ -62,6 +63,7 @@ export function createIncrementalBuilds({
   show,
   release,
   priority = () => 0,
+  preparePriority = () => {},
   schedule = requestAnimationFrame,
   cancel = cancelAnimationFrame,
   now = () => performance.now(),
@@ -110,6 +112,11 @@ export function createIncrementalBuilds({
     if (revision !== epoch) return;
     frame = 0;
     const start = now();
+    preparePriority();
+    jobs = jobs
+      .map((job) => ({ job, score: priority(job.tiles) }))
+      .sort((a, b) => a.score - b.score || (a.job.id < b.job.id ? -1 : a.job.id > b.job.id ? 1 : 0))
+      .map(({ job }) => job);
     /** @type {Record[]} */
     const retired = [];
     do {
@@ -170,7 +177,6 @@ export function createIncrementalBuilds({
           if (projected) displayed.delete(id);
         }
       }
-      jobs.sort((a, b) => priority(a.tiles) - priority(b.tiles));
       publish();
       if (jobs.length) frame = schedule(() => slice(revision));
     },
