@@ -8,27 +8,26 @@ function harness() {
   let id = 0;
   const builds = createMapBuilds({
     build: (layout) => ({ id: ++id, layout }),
-    attach: (record) => log.push(`attach ${record.id}`),
-    detach: (record) => log.push(`detach ${record.id}`),
+    show: (record) => log.push(record ? `show ${record.id}` : 'show none'),
     release: (record) => log.push(`release ${record.id}`),
   });
-  return { builds, log, take: () => log.splice(0) };
+  return { builds, take: () => log.splice(0) };
 }
 
-test('toggling between a source layout and its projection reattaches retained builds', () => {
+test('toggling between a source layout and its projection shows retained builds', () => {
   const { builds, take } = harness();
   const source = [{ key: 'a' }],
     fog = [{ key: 'a', fogState: 'undiscovered' }];
   assert.equal(builds.show(source, source, 'low-poly'), true);
-  assert.deepEqual(take(), ['attach 1']);
+  assert.deepEqual(take(), ['show 1']);
   assert.equal(builds.show(fog, source, 'low-poly'), true);
-  assert.deepEqual(take(), ['detach 1', 'attach 2'], 'the source build is kept');
+  assert.deepEqual(take(), ['show 2'], 'the source build is kept');
   assert.equal(builds.show(source, source, 'low-poly'), true);
-  assert.deepEqual(take(), ['detach 2', 'attach 1'], 'fog off restores it without a build');
+  assert.deepEqual(take(), ['show 1'], 'fog off restores it without a build');
   assert.equal(builds.show(source, source, 'low-poly'), false);
   assert.deepEqual(take(), []);
   assert.equal(builds.show(fog, source, 'low-poly'), true);
-  assert.deepEqual(take(), ['detach 1', 'attach 2'], 'the projection is kept as well');
+  assert.deepEqual(take(), ['show 2'], 'the projection is kept as well');
   assert.equal(builds.active().id, 2);
 });
 
@@ -38,9 +37,9 @@ test('a projection shown first keeps working when its source is built later', ()
     fog = [{ key: 'a', fogState: 'undiscovered' }];
   builds.show(fog, source, 'low-poly');
   builds.show(source, source, 'low-poly');
-  assert.deepEqual(take(), ['attach 1', 'detach 1', 'attach 2']);
+  assert.deepEqual(take(), ['show 1', 'show 2']);
   builds.show(fog, source, 'low-poly');
-  assert.deepEqual(take(), ['detach 2', 'attach 1']);
+  assert.deepEqual(take(), ['show 1']);
 });
 
 test('a new projection of the same source releases only the previous projection', () => {
@@ -50,9 +49,9 @@ test('a new projection of the same source releases only the previous projection'
   builds.show([{ key: 'a', fogState: 'unvisited' }], source, 'low-poly');
   take();
   builds.show([{ key: 'a', fogState: 'visited' }], source, 'low-poly');
-  assert.deepEqual(take(), ['detach 2', 'release 2', 'attach 3']);
+  assert.deepEqual(take(), ['show 3', 'release 2'], 'the stale projection goes after the swap');
   builds.show(source, source, 'low-poly');
-  assert.deepEqual(take(), ['detach 3', 'attach 1']);
+  assert.deepEqual(take(), ['show 1']);
 });
 
 test('a new source layout or style releases every build before building again', () => {
@@ -64,10 +63,10 @@ test('a new source layout or style releases every build before building again', 
   take();
   const edited = [{ key: 'a' }];
   builds.show(edited, edited, 'low-poly');
-  assert.deepEqual(take(), ['detach 2', 'release 1', 'release 2', 'attach 3']);
+  assert.deepEqual(take(), ['show none', 'release 1', 'release 2', 'show 3']);
   builds.show(edited, edited, 'pixelart');
-  assert.deepEqual(take(), ['detach 3', 'release 3', 'attach 4'], 'style keys builds too');
+  assert.deepEqual(take(), ['show none', 'release 3', 'show 4'], 'style keys builds too');
   builds.clear();
-  assert.deepEqual(take(), ['detach 4', 'release 4']);
+  assert.deepEqual(take(), ['show none', 'release 4']);
   assert.equal(builds.active(), null);
 });

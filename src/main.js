@@ -59,6 +59,7 @@ const paletteLibrary = createPaletteLibrary(saved);
 const savedPalettes = paletteLibrary.custom;
 let layout;
 let displayView;
+let presentedStyle;
 const fogViewer = createFogViewer();
 let inspector;
 let batchInspector;
@@ -358,7 +359,7 @@ function handleAction(result) {
   } else if (result.scope === 'appearance') {
     syncTimeOfDay();
     applyPalette();
-    refreshPresentation({ force: true });
+    refreshPresentation();
     syncSelection();
     updateInspector();
   } else if (result.scope === 'lighting') syncTimeOfDay();
@@ -375,12 +376,14 @@ function handleAction(result) {
   return true;
 }
 
-function refreshPresentation({ resetView = false, force = false } = {}) {
+function refreshPresentation({ resetView = false } = {}) {
   const { world, campaign, visibility } = session.snapshot();
   workspaceControls.syncFog(Boolean(campaign.fogOfWar));
   const view = fogViewer(world, layout, visibility);
-  if (view === displayView && !force) return;
+  const artStyle = campaign.artStyle ?? 'low-poly';
+  if (view === displayView && artStyle === presentedStyle) return;
   displayView = view;
+  presentedStyle = artStyle;
   cellsByKey = new Map(displayView.world.cells.map((cell) => [cell.key, cell]));
   const partyOption = document.createElement('option');
   partyOption.value = PARTY_SELECTION;
@@ -405,7 +408,7 @@ function refreshPresentation({ resetView = false, force = false } = {}) {
     source: layout,
     resetView,
     preserveFraming: !resetView,
-    artStyle: campaign.artStyle ?? 'low-poly',
+    artStyle,
   });
   renderer?.select(session.snapshot().selected, { notify: false });
   syncParty();

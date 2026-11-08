@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { addMesh, clearGeometries, disposeGeometries } from './geometry.js';
+import { addMesh, disposeGeometries } from './geometry.js';
 import { windWeight } from './ambient-motion.js';
 import { createTerrainBuilder } from './terrain-meshes.js';
 import { createNatureBuilder } from './nature-props.js';
@@ -108,40 +108,36 @@ export function createMapMeshes(
     });
   }
   configure(artStyle);
-  // A build is a detached record; attach/detach move it in and out of the map
-  // without rebuilding, release disposes it. The renderer decides which records
-  // to keep (see map-builds.js); setMap is the plain replace-everything path.
-  let attached = null;
+  // A build is a record with its own group; show replaces whatever is shown
+  // and release disposes a record. The renderer decides which records to keep
+  // (see map-builds.js); setMap is the plain replace-everything path.
+  let shown = null;
   function build(layout, options = {}) {
     if (options.artStyle !== undefined && mapArtStyle(options.artStyle) !== style)
       configure(options.artStyle);
     return buildMap(layout);
   }
-  function attach(record) {
-    for (const child of record.children) map.add(child);
-    cells.push(...record.cells);
-    lightSources.push(...record.lightSources);
-    if (record.wave) waveDirection.value.copy(record.wave);
-    attached = record;
-  }
-  function detach(record) {
-    for (const child of record.children) map.remove(child);
+  function show(record) {
+    const previous = shown;
+    if (previous) map.remove(previous.root);
     cells.length = 0;
     lightSources.length = 0;
-    attached = null;
-  }
-  const release = (record) => disposeGeometries(record.children);
-  function setMap(layout, options) {
-    const previous = attached;
-    if (previous) {
-      detach(previous);
-      release(previous);
+    if (record) {
+      map.add(record.root);
+      cells.push(...record.cells);
+      lightSources.push(...record.lightSources);
+      if (record.wave) waveDirection.value.copy(record.wave);
     }
-    attach(build(layout, options));
+    shown = record;
+    return previous;
   }
+  function release(record) {
+    if (record) disposeGeometries([record.root]);
+  }
+  const setMap = (layout, options) => release(show(build(layout, options)));
   function buildMap(layout) {
     const root = new THREE.Group();
-    const record = { children: root.children, cells: [], lightSources: [], wave: null };
+    const record = { root, cells: [], lightSources: [], wave: null };
     const propBatches = new Map();
     const wave = layout.flatMap((cell) => cell.props).find((prop) => prop.kind === 'wave');
     if (wave) record.wave = new THREE.Vector2(Math.cos(wave.angle), Math.sin(wave.angle));
@@ -294,8 +290,6 @@ export function createMapMeshes(
         installFoliageLOD(mesh, batch.faces * 3, batch.farFaces * 3, batch.pixelSize);
       if (batch.material.userData.treeSway) mesh.customDepthMaterial = treeDepth;
     }
-    // Reparenting on attach empties root.children; keep our own list.
-    record.children = [...root.children];
     return record;
   }
   return {
@@ -303,19 +297,11 @@ export function createMapMeshes(
     cells,
     lightSources,
     build,
-    attach,
-    detach,
+    show,
     release,
     setMap,
     dispose() {
-      const record = attached;
-      if (record) {
-        detach(record);
-        release(record);
-      }
-      clearGeometries(map);
-      cells.length = 0;
-      lightSources.length = 0;
+      release(show(null));
       pendingLights = [];
     },
   };

@@ -450,7 +450,7 @@ test('city light crosses shared bevels onto dry neighbours, stopping at water, f
   }
 });
 
-test('lighting records attach, detach and reattach the same glow batches', () => {
+test('lighting records show, swap back and release the same glow batches', () => {
   const world = generateWorld('7');
   const layout = prepareMap(world, generateDressing(world, 0));
   const registry = createMapMaterials(),
@@ -463,24 +463,23 @@ test('lighting records attach, detach and reattach the same glow batches', () =>
     assert.ok(record.glow.length > 0 && record.beams.length > 0);
     let disposed = 0;
     for (const mesh of record.glow) mesh.geometry.addEventListener('dispose', () => disposed++);
-    lighting.attach(record);
+    assert.equal(lighting.show(record), null);
     assert.deepEqual(lighting.group.children, record.glow);
     assert.deepEqual(lighting.beamGroup.children, record.beams);
     lighting.setMode('night');
     lighting.update(0, camera());
     assert.ok(lighting.points.some((light) => light.intensity > 0));
-    lighting.detach(record);
+    assert.equal(lighting.show(null), record);
     assert.equal(lighting.group.children.length, 0);
     lighting.update(0, camera());
     assert.ok(
       lighting.points.every((light) => light.intensity === 0),
-      'detached sources go dark',
+      'hidden sources go dark',
     );
     assert.equal(disposed, 0);
-    lighting.attach(record);
+    lighting.show(record);
     assert.deepEqual(lighting.group.children, record.glow);
-    lighting.detach(record);
-    lighting.release(record);
+    lighting.release(lighting.show(null));
     assert.equal(disposed, record.glow.length);
     meshes.release(map);
   } finally {

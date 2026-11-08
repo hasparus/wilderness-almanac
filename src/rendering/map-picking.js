@@ -4,10 +4,10 @@ const MAX_RANGE_VERTICES = 1024 * 3;
 
 // Material batches span the whole map. Bound contiguous tile ranges once so
 // picking visits nearby triangles without changing the rendered geometry.
-export function createMapPicker(map) {
+export function createMapPicker(roots) {
   const entries = [];
   const point = new Vector3();
-  map.traverse((object) => {
+  const visit = (object) => {
     if (!object.isMesh) return;
     const faceRanges = object.userData.faceRanges;
     if (!faceRanges) {
@@ -35,7 +35,8 @@ export function createMapPicker(map) {
       range.bounds = bounds.applyMatrix4(object.matrixWorld);
     }
     entries.push({ object, ranges });
-  });
+  };
+  for (const root of roots) root.traverse(visit);
   const hits = [];
   return (raycaster) => {
     hits.length = 0;

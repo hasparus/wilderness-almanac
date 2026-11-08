@@ -96,23 +96,19 @@ export function createMapRenderer(
       const lighting = featureLighting.build(map.lightSources, layout, { artStyle: style });
       return { map, lighting, picker: null };
     },
-    attach(record) {
-      meshes.attach(record.map);
-      featureLighting.attach(record.lighting);
-    },
-    detach(record) {
-      meshes.detach(record.map);
-      featureLighting.detach(record.lighting);
+    show(record) {
+      meshes.show(record?.map ?? null);
+      featureLighting.show(record?.lighting ?? null);
     },
     release(record) {
       meshes.release(record.map);
       featureLighting.release(record.lighting);
     },
   });
+  // The picker derives from the shown record and is kept with it.
   function picker() {
     const record = builds.active();
-    if (!record) return () => null;
-    return (record.picker ??= createMapPicker(meshes.group));
+    return record ? (record.picker ??= createMapPicker([record.map.root])) : createMapPicker([]);
   }
   const party = onPartyMove
     ? createPartyToken({ host, draw, onMove: onPartyMove, onSelect: onPartySelect, artStyle })
