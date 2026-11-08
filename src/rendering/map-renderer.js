@@ -26,7 +26,6 @@ export function createMapRenderer(
     transparent = false,
     groundShadow = true,
     artStyle = 'low-poly',
-    embedded = false,
   } = {},
 ) {
   artStyle = mapArtStyle(artStyle);
@@ -34,7 +33,7 @@ export function createMapRenderer(
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({
-      antialias: !embedded,
+      antialias: true,
       alpha: transparent,
       powerPreference: 'default',
     });
@@ -42,7 +41,7 @@ export function createMapRenderer(
     if (loading) loading.textContent = 'This preview needs WebGL support.';
     return;
   }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, embedded ? 1 : 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;
   renderer.shadowMap.enabled = true;
@@ -58,7 +57,7 @@ export function createMapRenderer(
     'Interactive isometric hex map. Arrow keys jump two hexes; + and − zoom. Select a hex or the party with the map dropdown. With the party selected, Q W E and A S D move it to adjacent hexes. Drag to pan or move the party; scroll, pinch, or double-tap and slide to zoom.',
   );
   const scene = new THREE.Scene();
-  const daylight = createDaylight(scene, { shadowMapSize: embedded ? 1024 : 2048 });
+  const daylight = createDaylight(scene);
   // The sun and its shadow camera are fixed while the view pans/zooms.
   daylight.sun.shadow.autoUpdate = false;
   let shadowTime = NaN,
@@ -123,15 +122,10 @@ export function createMapRenderer(
     // Pick the latest pointer position before painting, without a second RAF.
     const hoverChanged = controls.updateHover();
     if (!needsRender && !hoverChanged) return;
-    const startedAt = embedded ? performance.now() : 0;
     needsRender = false;
-    const ambientTime = palette.ambientTime.value;
-    if (
-      shadowTime !== ambientTime &&
-      (!embedded || !Number.isFinite(shadowTime) || ambientTime - shadowTime >= 0.2)
-    ) {
+    if (shadowTime !== palette.ambientTime.value) {
       daylight.sun.shadow.needsUpdate = true;
-      shadowTime = ambientTime;
+      shadowTime = palette.ambientTime.value;
     }
     renderer.domElement.dataset.zoom = String(controls.camera.zoom);
     featureLighting.update(palette.ambientTime.value, controls.camera);
@@ -139,11 +133,6 @@ export function createMapRenderer(
     renderer.render(scene, controls.camera);
     party?.render(renderer, controls.camera);
     keyHints?.render(controls.camera);
-    // Leave input/scrolling time between expensive frames on slower graphics devices.
-    if (embedded)
-      ambientLoop.setFrameInterval(
-        Math.min(500, Math.max(50, (performance.now() - startedAt) * 3)),
-      );
   }
   const ambientLoop = createAmbientLoop({
     renderer,

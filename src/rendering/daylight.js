@@ -2,14 +2,11 @@ import * as THREE from 'three';
 import { DAYLIGHT, timeOfDay } from '../application/time-of-day.js';
 
 // A single shadow map, plus a soft, shadowless eastern fill at dawn.
-export function createDaylight(
-  scene,
-  { shadows = true, sunPatch = true, shadowMapSize = 2048 } = {},
-) {
+export function createDaylight(scene, { shadows = true, sunPatch = true } = {}) {
   const ambient = new THREE.HemisphereLight();
   const sun = new THREE.DirectionalLight();
   const patch = sunPatch ? new THREE.SpotLight('#ffe0e8', 0, 0, 0.65, 1, 0) : null;
-  sun.shadow.mapSize.set(shadowMapSize, shadowMapSize);
+  sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.normalBias = 0.035;
   sun.shadow.bias = -0.0002;
   sun.shadow.radius = 3;

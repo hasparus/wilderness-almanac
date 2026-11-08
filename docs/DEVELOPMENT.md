@@ -124,17 +124,6 @@ can update TOD, color and visibility; visibility pauses ambient rendering while
 the footer is offscreen. Reduced motion remains owned by the renderer.
 Keep both embeds working when changing shared renderer or scene-generation modules.
 
-Website embeds opt into the renderer's `embedded` budget; the application keeps
-its existing rendering defaults. The embed caps device pixel ratio at one,
-disables multisample antialiasing for the Pixelart scene and uses a 1024-square
-shadow buffer rather than 2048. Wind shadows refresh at most five times per
-second; map, lighting and selection changes still render immediately. Ambient
-frames retain the 20fps ceiling but leave roughly twice their measured rendering
-cost free between frames on slower devices, capped at a 500ms frame interval.
-The shared wind clock continues to use elapsed time, so reduced frame rates do
-not slow wind itself. Parent visibility messages pause covered/offscreen maps;
-reduced motion and hidden documents continue to stop the ambient loop.
-
 ## Licensing
 
 Keep the application AGPLv3 license and bundled font/icon licenses and attribution.

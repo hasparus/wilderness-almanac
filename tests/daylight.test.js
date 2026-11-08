@@ -115,64 +115,6 @@ test('the shared animation clock freezes for Movement off, reduced motion and hi
   loop.dispose();
 });
 
-test('website embeds can use a smaller shadow buffer without changing the normal renderer', () => {
-  const scene = new THREE.Scene();
-  const standard = createDaylight(scene);
-  const embedded = createDaylight(scene, { shadowMapSize: 1024 });
-  assert.deepEqual(standard.sun.shadow.mapSize.toArray(), [2048, 2048]);
-  assert.deepEqual(embedded.sun.shadow.mapSize.toArray(), [1024, 1024]);
-  assert.equal(embedded.sun.intensity, standard.sun.intensity);
-  assert.deepEqual(embedded.sun.position.toArray(), standard.sun.position.toArray());
-  embedded.dispose();
-  standard.dispose();
-});
-
-test('slow website frames can leave an input budget while wind keeps real-time speed', (t) => {
-  const oldWindow = globalThis.window;
-  const oldDocument = globalThis.document;
-  globalThis.window = { matchMedia: () => Object.assign(new EventTarget(), { matches: false }) };
-  globalThis.document = Object.assign(new EventTarget(), { hidden: false });
-  t.after(() => {
-    globalThis.window = oldWindow;
-    globalThis.document = oldDocument;
-  });
-  let frame;
-  let draws = 0;
-  const renderer = {
-    domElement: { dataset: {} },
-    setAnimationLoop(callback) {
-      frame = callback;
-    },
-  };
-  const clock = { value: 0 };
-  const loop = createAmbientLoop({
-    renderer,
-    ambientTime: clock,
-    motion: true,
-    draw() {
-      draws++;
-    },
-  });
-  frame(0);
-  loop.setFrameInterval(300);
-  frame(100);
-  frame(200);
-  assert.equal(draws, 1, 'slow graphics must not immediately queue another draw');
-  frame(300);
-  assert.equal(draws, 2);
-  assert.equal(clock.value, 0.3, 'wind follows elapsed time, not the lower frame rate');
-  loop.setMotion(true);
-  frame(400);
-  assert.equal(draws, 2, 'unchanged visibility must not restart the animation clock');
-  loop.setFrameInterval(50);
-  frame(450);
-  assert.equal(draws, 3, 'fast rendering can recover its original cadence');
-  assert.ok(Math.abs(clock.value - 0.45) < 1e-9);
-  loop.setMotion(false);
-  assert.equal(frame, null);
-  loop.dispose();
-});
-
 test('only Day strengthens wind by 20 percent and shortens gusts, including tinted, fog and shadow shaders', () => {
   const registry = createMapMaterials();
   const materials = [
