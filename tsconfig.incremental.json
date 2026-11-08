@@ -28,6 +28,9 @@
     "tests/river-surface-optimization.test.js",
     "src/ui/deferred-map-work.js",
     "tests/deferred-map-work.test.js",
+    "tests/viewport-priority.test.js",
+    "tests/river-surface-cache.test.js",
+    "tests/deferred-river-rendering.test.js",
     "tests/chunk-transitions.test.js",
     "tests/incremental-builds.test.js",
     "e2e/incremental-renderer.spec.js"

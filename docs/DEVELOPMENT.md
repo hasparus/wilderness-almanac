@@ -81,6 +81,17 @@ explicit disposal owners.
 dressing)` creates numeric renderer data. `campaignWorld` and `campaignDressing`
 resolve edits and locks over the generated base. Use named random streams.
 
+`prepareMap` remains eager by default. Campaigns opt into `deferRiverSurfaces`:
+river/mouth tiles carry plain, cloneable descriptors with owned numeric inputs.
+`generation/river-surface-cache.js` resolves the exact triangulation once per
+descriptor through a WeakMap. Shallow source/fog copies share it; undiscovered
+fog tiles omit it. Terrain, ground/beam lighting, selection rings and party height
+resolve surfaces when needed, including required neighbouring surfaces. Snapshots
+flush all queued chunks. This moves work, not geometry detail: shared boundaries,
+triangle order, bevels and clipped water remain unchanged. River triangulation
+reuses sector lattice samples and skips island-bank comparisons for empty island
+fields; it retains the cross-sector lookup and first-encounter ordering.
+
 Only generator **10** is supported. The number remains explicit in campaigns and
 shared URLs; unsupported versions are rejected. Refactors must preserve current
 world/dressing hashes and visuals. Future intentional generation changes require
@@ -105,6 +116,16 @@ and open the shell before storage initialization; startup does not render librar
 cards or animate from the library. Invalid routes/replays and failed loads restore
 the library. New-campaign creation retains its separate preview/loading flow.
 
+`ui/deferred-map-work.js` schedules optional campaign previews only while the
+workspace is visible, its loading shell is gone, and the main canvas is `ready`.
+A mutation observer opens/closes this gate; there is no loading-time polling.
+The keyed queue runs one synchronous job per idle opportunity, replaces stale
+Inspector/party requests, and gates each gallery tile. Cancellation settles
+waiting callers; entry, Back and disposal clear pending work. Existing images
+are reused only for matching inputs; otherwise the party button keeps its SVG
+fallback and stale Inspector images stay hidden. Preview rendering APIs remain
+synchronous for creation, embeds and callers outside campaign scheduling.
+
 ## Incremental campaign rendering
 
 `src/ui/map-view.js` exposes `createCampaignMapRenderer` for the campaign and the
@@ -118,6 +139,11 @@ chunk can exceed that budget). Fog signatures include neighboring visibility for
 river banks, shorelines and shared edges. Restrictive updates detach stale chunks
 and picking targets synchronously; newer requests cancel queued work. Source or
 art-style changes release both caches. Explicit snapshots flush pending work.
+Before each slice, camera matrices refresh and pending chunks are scored once
+against conservative projected footprint/height bounds. Viewport intersections
+rank first, then distance to the centre, with deterministic chunk-ID ties. This
+follows initial party focus and subsequent pan/zoom; it is scheduling, not culling.
+All chunks still build, including offscreen shadow/light dependencies.
 
 `retained-chunk-scene.js` mounts memoized chunk primitives through an R3F portal.
 Primitives use record-identity keys so an outgoing fog record can remain mounted
@@ -190,6 +216,8 @@ custom-preference and seven-hex worlds. `tests/fixtures/rendering.json` records
 version-10 Low poly mesh buffers, materials, transforms and picking metadata.
 These baselines were captured before removing historical generators. Do not
 regenerate fixtures merely to hide failures. Preserve distinct Pixelart checks.
+`tests/fixtures/river-surfaces-v10.json` records baseline numeric surface digests,
+including signed zero and ordering, for generated, edited and locked river replay.
 
 Browser fixtures seed current IndexedDB records directly through `e2e/data.js`.
 They do not depend on localStorage campaign migration. The journal pagination component check imports source modules and runs through `test:workspace`, separately from production-build tests. Simulated failures stay in
