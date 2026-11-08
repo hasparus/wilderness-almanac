@@ -117,7 +117,7 @@ test('rebuilds release old geometry once, retain shared materials, and dispose t
   assert.equal(meshes.cells.length, 0);
 });
 
-test('build records attach, detach and reattach without rebuilding or disposing', () => {
+test('build records show, swap back and release without rebuilding or disposing', () => {
   const world = generateWorld('7');
   const full = prepareMap(world, generateDressing(world, 0));
   const centre = full.find((tile) => tile.pointOfLight);
@@ -131,8 +131,7 @@ test('build records attach, detach and reattach without rebuilding or disposing'
   const meshes = createMapMeshes(registry);
   const disposals = (record) => {
     let count = 0;
-    for (const child of record.children)
-      child.traverse((object) => object.geometry?.addEventListener('dispose', () => count++));
+    record.root.traverse((object) => object.geometry?.addEventListener('dispose', () => count++));
     return () => count;
   };
   try {
@@ -140,26 +139,24 @@ test('build records attach, detach and reattach without rebuilding or disposing'
     const sourceDisposed = disposals(source);
     assert.equal(meshes.group.children.length, 0, 'building does not touch the map');
     assert.ok(source.lightSources.length > 0);
-    meshes.attach(source);
-    assert.deepEqual(meshes.group.children, source.children);
+    assert.equal(meshes.show(source), null);
+    assert.deepEqual(meshes.group.children, [source.root]);
     assert.deepEqual(meshes.cells, source.cells);
     assert.deepEqual(meshes.lightSources, source.lightSources);
     const projection = meshes.build(createFogView(world, layout, states).layout);
-    meshes.detach(source);
-    assert.equal(meshes.group.children.length, 0);
-    assert.equal(meshes.cells.length, 0);
-    assert.equal(sourceDisposed(), 0, 'detaching keeps the geometry');
-    meshes.attach(projection);
+    assert.equal(meshes.show(projection), source, 'show hands back what it replaced');
+    assert.deepEqual(meshes.group.children, [projection.root]);
     assert.ok(meshes.cells.every((cell) => cell.fogState));
-    meshes.detach(projection);
-    meshes.attach(source);
-    assert.deepEqual(meshes.group.children, source.children, 'the same objects come back');
+    assert.equal(sourceDisposed(), 0, 'a replaced record keeps its geometry');
+    assert.equal(meshes.show(source), projection);
+    assert.deepEqual(meshes.group.children, [source.root], 'the same objects come back');
     assert.deepEqual(meshes.lightSources, source.lightSources);
     meshes.release(projection);
     assert.equal(sourceDisposed(), 0);
     meshes.dispose();
-    assert.ok(sourceDisposed() > 0, 'dispose releases the attached record');
+    assert.ok(sourceDisposed() > 0, 'dispose releases the shown record');
     assert.equal(meshes.group.children.length, 0);
+    assert.equal(meshes.cells.length, 0);
   } finally {
     meshes.dispose();
     registry.dispose();

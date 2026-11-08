@@ -18,7 +18,7 @@ export function createMapControls({
   party,
   touchMultiSelect = false,
   navigation = true,
-  picker = () => createMapPicker(map),
+  picker = () => createMapPicker([map]),
 }) {
   const listeners = new AbortController();
   const listen = (target, event, handler, options = {}) =>

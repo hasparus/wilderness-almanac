@@ -8,7 +8,7 @@ import {
   canSee,
   hexSightLine,
 } from '../src/application/fog-of-war.js';
-import { createFogView } from '../src/application/fog-view.js';
+import { createFogView, createFogViewer } from '../src/application/fog-view.js';
 import { describeHex } from '../src/ui/map-link.js';
 import { inspectDistances } from '../src/generation/campaign-world.js';
 import { partyMetadata } from '../src/application/party-token.js';
@@ -423,4 +423,19 @@ test('proximity uses only discovered settlement footprints; coverage keeps the r
   assert.equal(metadata.land, 468);
   assert.equal(metadata.visited, 1);
   assert.equal(metadata.settlement, 0);
+});
+
+test('the fog viewer hands back the same plain view and projection across toggles', () => {
+  const { world } = fixture();
+  const layout = world.cells.map((cell) => ({ ...cell, props: [] }));
+  const viewer = createFogViewer();
+  const plain = viewer(world, layout, null);
+  assert.equal(plain.layout, layout);
+  const states = computeFogOfWar(world, visits('0,0'));
+  const fogged = viewer(world, layout, states);
+  assert.notEqual(fogged.layout, layout);
+  assert.equal(viewer(world, layout, null), plain, 'fog off returns the same plain view');
+  assert.equal(viewer(world, layout, states), fogged, 'fog on returns the retained projection');
+  assert.notEqual(viewer(world, layout, new Map(states)), fogged, 'new visibility projects again');
+  assert.notEqual(viewer(world, [...layout], null), plain, 'a new layout is a new view');
 });

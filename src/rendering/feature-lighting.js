@@ -193,24 +193,27 @@ export function createFeatureLighting(scene) {
   const aim = new THREE.Vector3(),
     direction = new THREE.Vector3(),
     focus = new THREE.Vector3();
-  // A build is a detached record of glow batches, lighthouse nodes and their
-  // animation state; the renderer keeps and restores records (see map-builds.js).
-  let attached = null;
-  function attach(record) {
-    for (const mesh of record.glow) group.add(mesh);
-    for (const node of record.beams) beamGroup.add(node);
-    sources = record.sources;
-    lighthouses = record.lighthouses;
-    attached = record;
-  }
-  function detach(record) {
-    for (const mesh of record.glow) group.remove(mesh);
-    for (const node of record.beams) beamGroup.remove(node);
-    sources = [];
-    lighthouses = [];
-    attached = null;
+  // A build is a record of glow batches, lighthouse nodes and their animation
+  // state; show replaces whatever is shown and release disposes a record. The
+  // renderer keeps and restores records (see map-builds.js).
+  let shown = null;
+  function show(record) {
+    const previous = shown;
+    if (previous) {
+      for (const mesh of previous.glow) group.remove(mesh);
+      for (const node of previous.beams) beamGroup.remove(node);
+    }
+    if (record) {
+      for (const mesh of record.glow) group.add(mesh);
+      for (const node of record.beams) beamGroup.add(node);
+    }
+    sources = record?.sources ?? [];
+    lighthouses = record?.lighthouses ?? [];
+    shown = record;
+    return previous;
   }
   function release(record) {
+    if (!record) return;
     for (const mesh of record.glow) mesh.geometry.dispose();
     for (const source of record.lighthouses) {
       source.landing.geometry.dispose();
@@ -218,14 +221,7 @@ export function createFeatureLighting(scene) {
       source.mesh.material.dispose();
     }
   }
-  function setSources(entries, cells, options) {
-    const previous = attached;
-    if (previous) {
-      detach(previous);
-      release(previous);
-    }
-    attach(build(entries, cells, options));
-  }
+  const setSources = (entries, cells, options) => release(show(build(entries, cells, options)));
   function build(entries, cells, { artStyle = 'low-poly' } = {}) {
     const pixel = artStyle === 'pixelart';
     const built = { glow: [], beams: [], sources: [], lighthouses: [] };
@@ -388,8 +384,7 @@ export function createFeatureLighting(scene) {
     points,
     beams,
     build,
-    attach,
-    detach,
+    show,
     release,
     setSources,
     setMode(value) {
@@ -397,11 +392,7 @@ export function createFeatureLighting(scene) {
     },
     update,
     dispose() {
-      const record = attached;
-      if (record) {
-        detach(record);
-        release(record);
-      }
+      release(show(null));
       group.removeFromParent();
       beamGroup.removeFromParent();
       for (const light of points) light.removeFromParent();
