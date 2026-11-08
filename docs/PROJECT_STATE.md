@@ -169,7 +169,9 @@ visits; structural editing requires fog off. See [fog rules](FOG_OF_WAR.md).
 Campaign maps render incrementally through retained React Three Fiber chunks;
 creation previews, thumbnails and embeds keep the synchronous renderer. Fog
 concealment and stale-work cancellation are immediate, while uncached reveals
-arrive over multiple frames. Chunking favors early progress and localized visits,
+arrive over multiple frames with a 120 ms drop into place, without added stagger.
+Cached swaps and restrictive updates stay instant; Movement off and reduced motion
+skip arrivals. Chunking favors early progress and localized visits,
 not minimum draw calls or the shortest full-map reveal. See the
 [renderer ownership contract](DEVELOPMENT.md#incremental-campaign-rendering).
 The UI theme is independent of map palette and lighting. Appearance choices stage

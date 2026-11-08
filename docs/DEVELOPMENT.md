@@ -107,13 +107,32 @@ and picking targets synchronously; newer requests cancel queued work. Source or
 art-style changes release both caches. Explicit snapshots flush pending work.
 
 `retained-chunk-scene.js` mounts memoized chunk primitives through an R3F portal.
-The build cache owns geometry disposal; React owns attachments. The existing
+Primitives use record-identity keys so an outgoing fog record can remain mounted
+under its arriving replacement. The build cache owns geometry disposal; React owns attachments. The existing
 renderer still owns controls, camera framing, ambient motion, shadows and the party
 overlay. `incremental-map-builds.js` supplies complete projected cell metadata
 immediately, caches pickers per chunk, and updates feature lights during partial
 reveals using the full target layout for clipping. Partial commits refresh picking
 without cancelling gestures or changing camera framing. The canvas exposes
 `data-renderer="fiber-retained"`, `data-render-state` and `aria-busy` for inspection.
+The state distinguishes geometry `building`, presentation `settling`, and `ready`.
+
+`chunk-transitions.js` gives newly built, revealed chunks a 120 ms quartic ease-out
+drop and opacity arrival, starting at about six CSS pixels above their resting
+position. Chunks start independently on their first render opportunity; there is
+no added stagger or wait for the whole map. Warm cache swaps, undiscovered-only
+chunks, and restrictive fog updates remain instant. Movement off and reduced
+motion skip transitions; disabling motion during an arrival settles it on the
+next frame. The existing render loop drives arrivals and refreshes shadows, while
+picker bounds follow the temporary translation without rescanning vertices.
+Temporary material clones retain wind/wave shader hooks and leave shared
+materials and geometry untouched. Completion, concealment and disposal restore
+original transforms/materials and release the clones. A previous, no-more-revealing
+chunk can remain underneath the arrival to avoid fading through an empty hole;
+it is excluded from picking and detached immediately on concealment. Underlays
+remain owned by the two-record cache; retiring one settles its arrival and detaches
+it before release. Light meshes travel with the chunk; palette/lighting changes settle active arrivals first. Snapshots flush
+both pending geometry and transitions.
 
 The standalone comparison tool has its own pinned dependencies and compares
 monolithic, native incremental, declarative Fiber and retained Fiber modes:

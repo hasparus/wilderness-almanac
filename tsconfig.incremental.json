@@ -18,6 +18,9 @@
     "src/rendering/map-renderer.js",
     "src/rendering/map-controls.js",
     "src/ui/map-view.js",
+    "src/rendering/chunk-transitions.js",
+    "src/rendering/map-picking.js",
+    "tests/chunk-transitions.test.js",
     "tests/incremental-builds.test.js",
     "e2e/incremental-renderer.spec.js"
   ]

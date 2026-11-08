@@ -26,6 +26,9 @@
  * @property {(layout: import('./incremental-map-builds.js').Tile[], source: import('./incremental-map-builds.js').Tile[], style: string) => void} show
  * @property {() => void} clear
  * @property {() => void} [flush]
+ * @property {(time: number) => boolean} [tick]
+ * @property {() => boolean} [animating]
+ * @property {() => void} [finishTransitions]
  * @property {() => void} [dispose]
  */
 

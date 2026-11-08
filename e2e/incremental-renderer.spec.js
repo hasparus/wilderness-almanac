@@ -8,6 +8,69 @@ const screenshotOptions = {
     'body * { visibility: hidden !important; } #hp-scene canvas { visibility: visible !important; }',
 };
 
+/**
+ * Observe in-page so even a synchronous warm swap or a 120 ms arrival is captured.
+ * @param {import('@playwright/test').Locator} canvas
+ * @param {import('@playwright/test').Locator} fog
+ * @param {boolean} [interrupt]
+ */
+async function observeFogSwap(canvas, fog, interrupt = false) {
+  await expect(fog).toBeEnabled();
+  const toggle = await fog.elementHandle();
+  return canvas.evaluate(
+    (canvas, { toggle, interrupt }) =>
+      new Promise((resolve, reject) => {
+        if (!(toggle instanceof HTMLButtonElement)) throw new Error('Missing fog switch');
+        /** @type {(string | null)[]} */
+        const states = [];
+        /** @type {{state: string | null, busy: string | null, enabled: boolean} | null} */
+        let interrupted = null;
+        let grace = 0;
+        const timeout = window.setTimeout(() => {
+          observer.disconnect();
+          clearTimeout(grace);
+          reject(new Error(`Fog swap did not finish: ${states.join(' -> ')}`));
+        }, 15000);
+        const observer = new MutationObserver((records) => {
+          for (let i = 0; i < records.length; i++) {
+            const state =
+              i + 1 < records.length
+                ? records[i + 1].oldValue
+                : canvas.getAttribute('data-render-state');
+            if (states.at(-1) !== state) states.push(state);
+          }
+          if (
+            interrupt &&
+            !interrupted &&
+            canvas.getAttribute('data-render-state') === 'settling'
+          ) {
+            interrupted = {
+              state: canvas.getAttribute('data-render-state'),
+              busy: canvas.getAttribute('aria-busy'),
+              enabled: !toggle.disabled && !toggle.closest('[inert]'),
+            };
+            toggle.click();
+          }
+          if (!grace && canvas.getAttribute('data-render-state') === 'ready') {
+            grace = window.setTimeout(() => {
+              observer.disconnect();
+              clearTimeout(timeout);
+              resolve({ states, interrupted, immediate });
+            }, 250);
+          }
+        });
+        observer.observe(canvas, {
+          attributes: true,
+          attributeFilter: ['data-render-state'],
+          attributeOldValue: true,
+        });
+        toggle.click();
+        const immediate = canvas.getAttribute('data-render-state');
+      }),
+    { toggle, interrupt },
+  );
+}
+
 for (const artStyle of ['low-poly', 'pixelart']) {
   test(`retained ${artStyle} chunks survive interrupted reveals and warm fog toggles`, async ({
     page,
@@ -54,6 +117,55 @@ for (const artStyle of ['low-poly', 'pixelart']) {
     await expect(canvas).toHaveAttribute('data-zoom', zoom ?? '');
     await expect(selection).toHaveValue(selected);
     await expect(fog).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Find party', exact: true })).toBeEnabled();
+  });
+
+  test(`motion-enabled ${artStyle} arrivals cancel while settling and cached swaps stay instant`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.goto('/');
+    /** An existing token avoids the automatic first visit; fully concealed fog has no sway. */
+    await seedCampaigns(page, [
+      {
+        ...campaign,
+        artStyle,
+        fogOfWar: true,
+        partyToken: { key: '0,0', style: 'cairn' },
+      },
+    ]);
+    await openCampaign(page, { expandInspector: false });
+    const canvas = page.getByRole('img', { name: /^Interactive isometric hex map\./ });
+    const fog = page.getByRole('switch', { name: 'Fog of war', exact: true });
+    await expect(canvas).toHaveAttribute('data-motion', 'ambient');
+    await expect(canvas).toHaveAttribute('data-render-state', 'ready');
+    await expect(fog).toBeChecked();
+    const concealed = await canvas.screenshot(screenshotOptions);
+
+    const cold = await observeFogSwap(canvas, fog, true);
+    expect(cold.immediate).toBe('building');
+    expect(cold.states).toEqual(['building', 'settling', 'ready']);
+    expect(cold.interrupted).toEqual({ state: 'settling', busy: 'true', enabled: true });
+    await expect(fog).toBeChecked();
+    await expect(canvas).toHaveAttribute('data-render-state', 'ready');
+    await expect(canvas).toHaveAttribute('aria-busy', 'false');
+    expect(
+      (await canvas.screenshot(screenshotOptions)).equals(concealed),
+      'concealment survives beyond the cancelled arrival',
+    ).toBe(true);
+
+    for (const concealedAgain of [false, true]) {
+      const warm = await observeFogSwap(canvas, fog);
+      expect(warm.immediate, 'cached swaps finish synchronously').toBe('ready');
+      expect(warm.states, 'cached swaps never build or settle').toEqual(['ready']);
+      await expect(fog).toBeChecked({ checked: concealedAgain });
+      await expect(canvas).toHaveAttribute('aria-busy', 'false');
+      expect((await canvas.screenshot(screenshotOptions)).equals(concealed)).toBe(concealedAgain);
+    }
+    await expect(canvas).toHaveAttribute('data-motion', 'ambient');
+    const selection = page.getByRole('combobox', { name: 'Select hex or party' });
+    await selection.selectOption('0,0');
+    await expect(selection).toHaveValue('0,0');
     await expect(page.getByRole('button', { name: 'Find party', exact: true })).toBeEnabled();
   });
 }

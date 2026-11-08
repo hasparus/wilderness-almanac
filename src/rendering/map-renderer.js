@@ -173,6 +173,10 @@ export function createMapRenderer(
     cancelAnimationFrame(frame);
     frame = 0;
     if (disposed) return;
+    if (builds.tick?.(performance.now())) {
+      needsRender = true;
+      daylight.sun.shadow.needsUpdate = true;
+    }
     // Pick the latest pointer position before painting, without a second RAF.
     const hoverChanged = controls.updateHover();
     if (!needsRender && !hoverChanged) return;
@@ -187,6 +191,7 @@ export function createMapRenderer(
     renderer.render(scene, controls.camera);
     party?.render(renderer, controls.camera);
     keyHints?.render(controls.camera);
+    if (builds.animating?.()) draw();
   }
   const ambientLoop = createAmbientLoop({
     renderer,
@@ -206,6 +211,7 @@ export function createMapRenderer(
     setFrameInsets: controls.setFrameInsets,
     /** @param {string} value */
     setTimeOfDay(value) {
+      builds.finishTransitions?.();
       dayMode = daylight.setMode(value);
       palette.setTimeOfDay(dayMode);
       featureLighting.setMode(dayMode);
@@ -280,6 +286,7 @@ export function createMapRenderer(
     },
     /** @param {import('./map-renderer-types.js').PaletteSeeds} seeds */
     setPalette(seeds) {
+      builds.finishTransitions?.();
       palette.setPalette(seeds);
       updateBackground();
       draw();

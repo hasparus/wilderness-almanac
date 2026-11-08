@@ -35,7 +35,7 @@ export function createRetainedChunkScene({ renderer, scene, camera, container, d
     if (disposed) return;
     if (!ready) {
       container.clear();
-      container.add(...chunks.map((chunk) => chunk.root));
+      if (chunks.length) container.add(...chunks.map((chunk) => chunk.root));
       return;
     }
     flushSync(() =>
