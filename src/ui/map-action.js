@@ -1,4 +1,3 @@
-// Match campaign entry: disable controls and paint feedback before synchronous work.
 export function createMapAction(root, announce) {
   let busy = false;
   let disposed = false;
@@ -8,25 +7,20 @@ export function createMapAction(root, announce) {
     async run(button, action, label = 'Applying…') {
       if (busy || disposed) return false;
       busy = true;
-      const controls = [...root.querySelectorAll('button, input, select')].map((control) => [
-        control,
-        control.disabled,
-      ]);
-      const content = [...button.childNodes];
-      let restored = false;
-      const restoreControls = () => {
-        for (const [control, disabled] of controls) control.disabled = disabled;
-        button.replaceChildren(...content);
-        restored = true;
+      const input = new AbortController();
+      const block = (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
       };
+      for (const type of ['pointerdown', 'click', 'keydown', 'beforeinput', 'submit']) {
+        root.addEventListener(type, block, { capture: true, signal: input.signal });
+      }
       release = () => {
-        if (!restored) restoreControls();
+        input.abort();
         button.removeAttribute('aria-busy');
         button.classList.remove('hp-working');
         root.removeAttribute('aria-busy');
       };
-      for (const [control] of controls) control.disabled = true;
-      button.textContent = label;
       button.classList.add('hp-working');
       button.setAttribute('aria-busy', 'true');
       root.setAttribute('aria-busy', 'true');
@@ -34,8 +28,7 @@ export function createMapAction(root, announce) {
       try {
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         if (disposed) return false;
-        // Restore before the synchronous action so its new disabled states win.
-        restoreControls();
+        input.abort();
         return action();
       } finally {
         release();

@@ -226,7 +226,7 @@ export function createCampaignSession({ persist }) {
     fogOfWar(enabled) {
       state = { ...state, campaign: { ...state.campaign, fogOfWar: Boolean(enabled) } };
       save();
-      return result('view', enabled ? 'Fog of war on' : 'Fog of war off');
+      return result('view');
     },
     selectParty() {
       partySelected = true;

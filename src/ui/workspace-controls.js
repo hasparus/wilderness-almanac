@@ -137,7 +137,6 @@ export function createWorkspaceControls(
     syncPartyKeys,
     syncFog(enabled) {
       element('fog').setAttribute('aria-checked', String(enabled));
-      element('fog-state').textContent = enabled ? 'ON' : 'OFF';
       element('fog').dataset.tooltip = enabled ? 'Turn fog of war off' : 'Turn fog of war on';
       root.dataset.fogOfWar = String(enabled);
     },

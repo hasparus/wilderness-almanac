@@ -527,20 +527,14 @@ function syncTimeOfDay() {
 listen(element('time-of-day'), 'click', () => {
   handleAction(session.setTimeOfDay(nextTimeOfDay(session.snapshot().campaign.timeOfDay)));
 });
-listen(element('fog'), 'click', (event) => {
+listen(element('fog'), 'click', () => {
   if (mapAction.isBusy()) return;
-  const button = event.currentTarget;
   const enabled = !session.snapshot().campaign.fogOfWar;
-  const change = () =>
-    mapAction.run(
-      button,
-      () => {
-        inspector.reset();
-        batchInspector.reset();
-        return handleAction(session.fogOfWar(enabled));
-      },
-      'Updating fog…',
-    );
+  const change = () => {
+    inspector.reset();
+    batchInspector.reset();
+    return handleAction(session.fogOfWar(enabled));
+  };
   if (activeInspector().beforeLeave(change)) change();
 });
 function syncSelection() {

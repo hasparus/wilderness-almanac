@@ -137,7 +137,7 @@ test('settlement joining, addressed errors and painted Apply feedback work toget
     new MutationObserver(() => {
       const button = workspace.querySelector('button[aria-busy="true"]');
       if (!button) return;
-      const sample = { label: button.textContent, disabled: button.disabled, painted: false };
+      const sample = { label: button.textContent, painted: false };
       window.batchWorking.push(sample);
       requestAnimationFrame(() => {
         sample.painted = button.getAttribute('aria-busy') === 'true';
@@ -154,9 +154,7 @@ test('settlement joining, addressed errors and painted Apply feedback work toget
   await expect(join).toBeEnabled();
   expect(
     await page.evaluate(() =>
-      window.batchWorking.some(
-        (sample) => sample.label === 'Applying…' && sample.disabled && sample.painted,
-      ),
+      window.batchWorking.some((sample) => sample.label === 'Apply to 2 hexes' && sample.painted),
     ),
   ).toBe(true);
   const joinBounds = await join.boundingBox();

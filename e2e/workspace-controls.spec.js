@@ -2,6 +2,56 @@ import { test, expect, library, openCampaign } from './fixtures.js';
 import { partyDestinations } from '../src/application/party-navigation.js';
 import { createTopology } from '../src/map-data.js';
 
+test('fog toggles keep their label, framing, focus and unrelated controls stable', async ({
+  page,
+}) => {
+  await openCampaign(page, { expandInspector: false });
+  const fog = page.getByRole('switch', { name: 'Fog of war', exact: true });
+  await fog.focus();
+  await page.evaluate(() => {
+    const fog = document.querySelector('#hp-fog');
+    const controls = ['#hp-fog', '#hp-back-menu', '#hp-find-party', '#hp-time-of-day'].map(
+      (selector) => document.querySelector(selector),
+    );
+    const content = [...fog.childNodes];
+    const sample = () => ({
+      label: fog.textContent.trim(),
+      sameNodes: content.every((node, index) => fog.childNodes[index] === node),
+      busy: fog.getAttribute('aria-busy'),
+      controls: controls.map((control) => ({
+        bounds: control.getBoundingClientRect().toJSON(),
+        disabled: control.disabled,
+        opacity: getComputedStyle(control).opacity,
+      })),
+    });
+    window.fogFeedback = { before: sample(), samples: [] };
+    const observer = new MutationObserver(() => {
+      window.fogFeedback.samples.push(sample());
+    });
+    observer.observe(fog, { subtree: true, childList: true, attributes: true });
+  });
+  const canvas = page.locator('#hp-scene canvas');
+  const zoom = await canvas.getAttribute('data-zoom');
+  const announcement = await page.locator('#hp-announcement').textContent();
+  for (const enabled of [true, false]) {
+    await fog.press('Space');
+    await expect(fog).toHaveAttribute('aria-checked', String(enabled));
+    await expect(fog).not.toHaveAttribute('aria-busy');
+    await expect(fog).toBeFocused();
+    await expect(canvas).toHaveAttribute('data-zoom', zoom);
+    await expect(page.locator('#hp-announcement')).toHaveText(announcement);
+  }
+  const { before, samples } = await page.evaluate(() => window.fogFeedback);
+  expect(before.label).toBe('Fog of war');
+  expect(samples.length).toBeGreaterThan(0);
+  for (const sample of samples) {
+    expect(sample.label).toBe(before.label);
+    expect(sample.sameNodes).toBe(true);
+    expect(sample.busy).toBeNull();
+    expect(sample.controls).toEqual(before.controls);
+  }
+});
+
 test('party shortcuts preserve framing, ignore editing and repeated keys, and retain Inspector navigation', async ({
   page,
 }, testInfo) => {

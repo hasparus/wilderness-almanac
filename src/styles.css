@@ -1517,10 +1517,6 @@
     color: var(--c-text-muted);
     white-space: nowrap;
   }
-  #hp-fog-state {
-    display: inline-block;
-    min-width: 3ch;
-  }
 
   .save-warning {
     display: flex;
