@@ -1396,6 +1396,23 @@
     padding: var(--space-m);
     color: var(--c-text-muted);
   }
+  .hp-fallback:has(.hp-map-skeleton) {
+    overflow: hidden;
+    padding: 0;
+    pointer-events: none;
+  }
+  .hp-map-skeleton {
+    width: 100%;
+    height: 100%;
+    color: var(--c-text-muted);
+    opacity: 0.18;
+    & path {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1;
+      vector-effect: non-scaling-stroke;
+    }
+  }
   .hp-status {
     position: absolute;
     z-index: var(--z-raised);

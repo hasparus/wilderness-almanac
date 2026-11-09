@@ -27,6 +27,7 @@
  * @property {() => void} clear
  * @property {() => void} [flush]
  * @property {(time: number) => boolean} [tick]
+ * @property {(time: number) => void} [afterRender]
  * @property {() => boolean} [animating]
  * @property {() => void} [finishTransitions]
  * @property {() => void} [dispose]

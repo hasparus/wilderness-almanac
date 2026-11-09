@@ -83,7 +83,8 @@ for (const entry of ['direct', 'menu']) {
         )
         .toBe(1);
       await expect(workspace).toBeVisible();
-      await expect(workspace.getByText('Preparing the landscape…', { exact: true })).toBeVisible();
+      await expect(page.locator('#hp-loading')).toHaveText('Loading campaign map…');
+      await expect(page.locator('#hp-loading svg')).toBeVisible();
       await expect(page.locator('#hp-scene canvas')).toHaveCount(0);
       expect(await campaignRevision(page)).toBe(1);
     } finally {

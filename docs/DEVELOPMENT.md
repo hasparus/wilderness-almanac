@@ -116,7 +116,13 @@ changes survive hex Undo; navigation guards unsaved form drafts.
 Campaign entry commits the workspace loading shell before importing the renderer
 or generating the world. The shell restores panel sizing and the campaign title,
 conceals retained canvas/details without collapsing their boxes, and paints before
-synchronous preparation starts. After that paint opportunity, renderer loading and
+synchronous preparation starts. A static inline SVG hex grid fills the map box;
+CSS supplies its theme color and the status label remains available to screen
+readers. It needs neither renderer imports nor WebGL, and the shell restores its
+markup on retry if a WebGL error replaced it with a message. The grid uses the
+initial camera projection and horizontal span from `map-framing.js`, rather than
+an arbitrary hex size. Projection tests keep the static SVG in sync with the
+camera constants on desktop and mobile. After that paint opportunity, renderer loading and
 pure `prepareCampaignMap` data preparation start together, so module fetching can
 overlap main-thread generation. This is not worker execution or speculative
 prewarming. `prepareCampaignEntry` observes both failures; `session.openPrepared`
@@ -182,7 +188,13 @@ and fade, starting about six CSS pixels below their resting position. Geometry a
 8 ms apart: at most 120 ms of stagger, not a whole-map queue. Cached reveals replay
 the same motion without rebuilding geometry; concealment stays instantaneous.
 Movement off and reduced motion skip arrivals, and disabling motion settles an
-active arrival on the next frame.
+active arrival on the next frame. Each new arrival anchors its clock after the
+first frame's render submission, so initial shader/setup cost does not consume
+its rise. Subsequent frames advance by at most 32 ms of animation time, so a
+long chunk build stretches the arrival instead of skipping its intermediate
+positions. The nominal duration remains 120 ms per hex, but elapsed wall time
+can be longer under load. This is a CPU submission boundary, not a guarantee
+of GPU completion or smooth frames under load.
 
 Batched geometry retains one byte per vertex for stable hex ownership. Per-hex
 delay uniforms drive color, rise and depth shaders; no per-hex draw calls or

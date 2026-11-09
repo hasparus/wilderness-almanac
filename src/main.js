@@ -28,6 +28,7 @@ import { createMapAction } from './ui/map-action.js';
 import { loadThumbnails, saveThumbnails } from './ui/thumbnail-cache.js';
 import { afterPaint, createViewNavigation } from './ui/view-navigation.js';
 import { createCampaignLoadingShell } from './ui/campaign-loading-shell.js';
+import { CAMPAIGN_HEXES_WIDE } from './map-framing.js';
 import { createControlTooltips } from './ui/control-help.js';
 import { createWorkspaceControls } from './ui/workspace-controls.js';
 import { createMapSelection, PARTY_SELECTION } from './ui/map-selection.js';
@@ -317,7 +318,7 @@ function presentCampaign({ resetView = false } = {}) {
   syncTimeOfDay();
   applyPalette();
   renderWorld({ resetView });
-  renderer?.focus(campaign.partyToken.key, { hexesWide: 9 / 1.2 });
+  renderer?.focus(campaign.partyToken.key, { hexesWide: CAMPAIGN_HEXES_WIDE });
   root.querySelector('.hp-title').textContent = campaign.name;
   document.title = `${campaign.name} · Wilderness Almanac`;
   root.dataset.mapName = world.name;

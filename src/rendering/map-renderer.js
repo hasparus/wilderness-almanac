@@ -192,6 +192,7 @@ export function createMapRenderer(
     renderer.render(scene, controls.camera);
     party?.render(renderer, controls.camera);
     keyHints?.render(controls.camera);
+    builds.afterRender?.(performance.now());
     if (builds.animating?.()) draw();
   }
   const ambientLoop = createAmbientLoop({

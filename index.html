@@ -907,7 +907,33 @@
         </header>
         <div class="hp-map-stage">
           <div class="hp-scene" id="hp-scene">
-            <div class="hp-fallback" id="hp-loading">Preparing the landscape…</div>
+            <div class="hp-fallback" id="hp-loading" role="status">
+              <!-- Projection mirrors map-framing.js; map-framing.test.js guards it.
+                   The shallow viewBox fits the width; the pattern fills the whole viewport. -->
+              <svg
+                class="hp-map-skeleton"
+                viewBox="-7.5 -0.5 15 1"
+                preserveAspectRatio="xMidYMid meet"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <defs>
+                  <pattern
+                    id="loading-hexes"
+                    width="1.7320508076"
+                    height="3"
+                    patternUnits="userSpaceOnUse"
+                    patternTransform="matrix(0.838961287 0.3039751427 -0.5441911051 0.468628345 0 0)"
+                  >
+                    <path
+                      d="M0 1 .8660254038 .5V-.5 M.8660254038 .5 1.7320508076 1V2L.8660254038 2.5 0 2V1 M.8660254038 2.5V3.5"
+                    />
+                  </pattern>
+                </defs>
+                <rect x="-1000" y="-1000" width="2000" height="2000" fill="url(#loading-hexes)" />
+              </svg>
+              <span class="sr-only">Loading campaign map…</span>
+            </div>
           </div>
           <span class="hp-zooms" role="group" aria-label="Map zoom">
             <button

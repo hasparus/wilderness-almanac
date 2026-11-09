@@ -169,11 +169,13 @@ visits; structural editing requires fog off. See [fog rules](FOG_OF_WAR.md).
 Campaign maps render incrementally through retained React Three Fiber chunks;
 creation previews, thumbnails and embeds keep the synchronous renderer. Fog
 concealment and stale-work cancellation are immediate, while uncached reveals
-arrive over multiple frames. Each hex independently rises and fades over 120 ms,
-with a short stagger inside each unchanged 4×4 batch. Cached reveals replay without
+arrive over multiple frames. Each hex independently rises and fades on a nominal
+120 ms timeline, with a short stagger inside each unchanged 4×4 batch. Long
+main-thread stalls stretch the timeline rather than skip the rise. Cached reveals replay without
 rebuilding; restrictive updates stay instant. Movement off and reduced motion
-skip arrivals. Campaign entry shows its sized loading workspace before renderer
-loading or generation, rather than preparing it behind the campaigns list.
+skip arrivals. Campaign entry shows its sized loading workspace with a static
+hex grid matching the initial map projection before renderer loading or generation,
+rather than preparing it behind the campaigns list.
 Renderer loading starts alongside pure campaign preparation after the shell can
 paint; only successful, active entry commits the prepared session. Mountain
 surfaces are reused across dressing and presentation with mutation-safe numeric

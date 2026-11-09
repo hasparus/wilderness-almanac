@@ -4,6 +4,8 @@ import { ensureRevealSlots, revealKey } from './hex-reveal-geometry.js';
 
 export const HEX_REVEAL_MS = 120;
 export const HEX_STAGGER_MS = 8;
+/** Keep a long chunk build from consuming the whole rise between rendered frames. */
+export const MAX_REVEAL_FRAME_MS = 32;
 const MAX_HEXES = 16;
 const defaultDepth = new MeshDepthMaterial({ depthPacking: RGBADepthPacking });
 /** @typedef {import('three').Group} Group */
@@ -12,7 +14,8 @@ const defaultDepth = new MeshDepthMaterial({ depthPacking: RGBADepthPacking });
 /** @typedef {{offset: number, visible: boolean, opacity: number}} HexPresentation */
 /**
  * @typedef {object} Transition
- * @property {number | null} start
+ * @property {number | null} previousFrame
+ * @property {boolean} awaitingFirstFrame
  * @property {number} duration
  * @property {{value: number}} time
  * @property {{value: number}} distance
@@ -118,7 +121,8 @@ export function createChunkTransitions({ enabled, distance }) {
       const used = new Set();
       /** @type {Transition} */
       const transition = {
-        start: null,
+        previousFrame: null,
+        awaitingFirstFrame: true,
         duration: HEX_REVEAL_MS + Math.max(...delays),
         time: cache.time,
         distance: cache.distance,
@@ -239,12 +243,21 @@ export function createChunkTransitions({ enabled, distance }) {
       transitions.set(root, transition);
       apply(transition, 0);
     },
+    /** Anchor new arrivals after their first frame's submission cost. @param {number} time */
+    afterRender(time) {
+      for (const transition of transitions.values()) {
+        if (!transition.awaitingFirstFrame) continue;
+        transition.previousFrame = time;
+        transition.awaitingFirstFrame = false;
+      }
+    },
     /** @param {number} time @returns {boolean} */
     tick(time) {
       const changed = transitions.size > 0;
       for (const [root, transition] of transitions) {
-        transition.start ??= time;
-        const elapsed = time - transition.start;
+        const delta = Math.max(0, time - (transition.previousFrame ?? time));
+        transition.previousFrame = time;
+        const elapsed = transition.time.value + Math.min(MAX_REVEAL_FRAME_MS, delta);
         if (!enabled() || elapsed >= transition.duration) finish(root);
         else apply(transition, elapsed);
       }

@@ -1,5 +1,6 @@
 // @ts-check
 import * as THREE from 'three';
+import { MAP_CAMERA_POSITION, MAP_LOOK_AT_HEIGHT } from '../map-framing.js';
 import { resolveRiverSurface } from '../generation/river-surface-cache.js';
 import { geometryFrom } from './geometry.js';
 import { surfaceHeight } from '../generation/math.js';
@@ -37,8 +38,8 @@ export function createMapControls({
   const listen = (target, event, handler, options = {}) =>
     target.addEventListener(event, handler, { ...options, signal: listeners.signal });
   const camera = new THREE.OrthographicCamera(-8, 8, 6, -6, 0.1, 180);
-  camera.position.set(24, 30, 37);
-  camera.lookAt(0, 0.3, 0);
+  camera.position.set(...MAP_CAMERA_POSITION);
+  camera.lookAt(0, MAP_LOOK_AT_HEIGHT, 0);
   /** @param {import('./map-renderer-types.js').ControlCell} cell */
   function ringGeometry(cell) {
     const points = [],

@@ -10,6 +10,7 @@ export function createCampaignLoadingShell(workspace) {
   const loading = workspace.querySelector('#hp-loading');
   if (!(title instanceof HTMLElement) || !(loading instanceof HTMLElement))
     throw new Error('Campaign loading shell is missing.');
+  const placeholder = [...loading.childNodes].map((node) => node.cloneNode(true));
 
   return {
     /** @param {string} name */
@@ -18,7 +19,7 @@ export function createCampaignLoadingShell(workspace) {
       workspace.setAttribute('aria-busy', 'true');
       title.textContent = name;
       document.title = `${name} · Wilderness Almanac`;
-      loading.textContent = 'Preparing the landscape…';
+      loading.replaceChildren(...placeholder.map((node) => node.cloneNode(true)));
       loading.hidden = false;
     },
     /** Release the shell once setMap has scheduled work, not when geometry finishes. */

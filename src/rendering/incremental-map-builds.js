@@ -245,6 +245,7 @@ export function createIncrementalMapBuilds(context) {
     clear: controller.clear,
     finishTransitions,
     animating: transitions.active,
+    afterRender: transitions.afterRender,
     /** @param {number} time @returns {boolean} */
     tick(time) {
       const changed = transitions.tick(time);

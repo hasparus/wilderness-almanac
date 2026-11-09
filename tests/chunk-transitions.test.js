@@ -15,6 +15,7 @@ import {
 import {
   HEX_REVEAL_MS,
   HEX_STAGGER_MS,
+  MAX_REVEAL_FRAME_MS,
   hexRevealProgress,
   createChunkTransitions,
 } from '../src/rendering/chunk-transitions.js';
@@ -43,6 +44,12 @@ function compile(material) {
   return shader;
 }
 
+/** @param {ReturnType<typeof createChunkTransitions>} transitions @param {number} from @param {number} to */
+function tickFrames(transitions, from, to) {
+  for (let time = from + 20; time < to; time += 20) transitions.tick(time);
+  return transitions.tick(to);
+}
+
 test('hexes rise independently for 120ms, with a bounded eight-millisecond stagger', () => {
   const { root, mesh, material } = chunk();
   const depth = new MeshDepthMaterial();
@@ -68,20 +75,67 @@ test('hexes rise independently for 120ms, with a bounded eight-millisecond stagg
   assert.deepEqual(Array.from(shader.uniforms.hexRevealDelays.value.slice(0, 2)), [8, 0]);
   assert.match(shader.vertexShader, /-hexRevealDistance/);
   transitions.tick(1000);
-  transitions.tick(1060);
+  tickFrames(transitions, 1000, 1060);
   assert.equal(hexRevealProgress(0.5), 0.9375);
   assert.equal(transitions.presentation(root, 'b')?.offset, -0.15 * 0.0625);
   assert.ok(
     (transitions.presentation(root, 'a')?.offset ?? 0) <
       (transitions.presentation(root, 'b')?.offset ?? 0),
   );
-  transitions.tick(1120);
+  tickFrames(transitions, 1060, 1120);
   assert.equal(transitions.active(), true, 'last hex finishes after the first');
   assert.equal(transitions.tick(1128), true);
   assert.equal(mesh.material, material);
   assert.equal(mesh.customDepthMaterial, depth);
   assert.equal(transitions.active(), false);
   assert.equal(transitions.tick(1130), false);
+});
+
+test('first-frame submission does not consume the rise or restart older chunks', () => {
+  const a = chunk(),
+    b = chunk();
+  const transitions = createChunkTransitions({ enabled: () => true, distance: () => 1 });
+  transitions.enter(a.root, ['a']);
+  transitions.tick(100);
+  transitions.afterRender(180);
+  transitions.tick(190);
+  assert.equal(transitions.presentation(a.root, 'a')?.offset, -(1 - hexRevealProgress(10 / 120)));
+  transitions.enter(b.root, ['a']);
+  transitions.tick(200);
+  transitions.afterRender(210);
+  tickFrames(transitions, 200, 240);
+  assert.equal(transitions.presentation(a.root, 'a')?.offset, -0.0625);
+  assert.equal(transitions.presentation(b.root, 'a')?.offset, -(1 - hexRevealProgress(30 / 120)));
+  tickFrames(transitions, 240, 300);
+  assert.equal(transitions.has(a.root), false);
+  assert.equal(transitions.has(b.root), true);
+  tickFrames(transitions, 300, 330);
+  assert.equal(transitions.active(), false);
+  transitions.enter(a.root, ['a']);
+  transitions.tick(400);
+  transitions.afterRender(600);
+  transitions.tick(610);
+  assert.equal(transitions.presentation(a.root, 'a')?.offset, -(1 - hexRevealProgress(10 / 120)));
+  transitions.finishAll();
+});
+
+test('startup build stalls cannot skip an entire rise between rendered frames', () => {
+  const { root } = chunk();
+  const transitions = createChunkTransitions({ enabled: () => true, distance: () => 1 });
+  transitions.enter(root, ['a', 'b']);
+  transitions.tick(0);
+  transitions.afterRender(200);
+  transitions.tick(400);
+  assert.equal(MAX_REVEAL_FRAME_MS, 32);
+  assert.equal(transitions.presentation(root, 'a')?.offset, -(1 - hexRevealProgress(32 / 120)));
+  assert.equal(transitions.presentation(root, 'b')?.offset, -(1 - hexRevealProgress(24 / 120)));
+  assert.equal(transitions.has(root), true);
+  transitions.tick(600);
+  assert.equal(transitions.presentation(root, 'a')?.offset, -(1 - hexRevealProgress(64 / 120)));
+  transitions.tick(800);
+  assert.equal(transitions.has(root), true);
+  transitions.tick(1000);
+  assert.equal(transitions.has(root), false);
 });
 
 test('cached replay reuses one-byte batch attributes and does not split meshes or rescan bounds', () => {
@@ -125,16 +179,16 @@ test('streamed chunks have independent clocks without restarting existing arriva
   const transitions = createChunkTransitions({ enabled: () => true, distance: () => 1 });
   transitions.enter(a.root, ['a']);
   transitions.tick(500);
-  transitions.tick(560);
+  tickFrames(transitions, 500, 560);
   transitions.enter(b.root, ['a']);
   transitions.enter(a.root, ['a']);
   transitions.tick(560);
   assert.equal(transitions.presentation(a.root, 'a')?.offset, -0.0625);
   assert.equal(transitions.presentation(b.root, 'a')?.offset, -1);
-  transitions.tick(620);
+  tickFrames(transitions, 560, 620);
   assert.equal(transitions.has(a.root), false);
   assert.equal(transitions.presentation(b.root, 'a')?.offset, -0.0625);
-  transitions.tick(680);
+  tickFrames(transitions, 620, 680);
   assert.equal(transitions.active(), false);
 });
 

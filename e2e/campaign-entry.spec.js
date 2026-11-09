@@ -1,5 +1,6 @@
 // @ts-check
 import { test, expect } from './fixtures.js';
+import { CAMPAIGN_HEXES_WIDE } from '../src/map-framing.js';
 
 test.use({ reducedMotion: 'no-preference' });
 
@@ -40,7 +41,8 @@ test('direct campaign URLs start in the workspace rather than flashing the libra
     await requested.promise;
     await expect(page.locator('#campaign-workspace')).toBeVisible();
     await expect(page.locator('#campaign-workspace')).toHaveAttribute('aria-busy', 'true');
-    await expect(page.getByText('Preparing the landscape…', { exact: true })).toBeVisible();
+    await expect(page.locator('#hp-loading')).toHaveText('Loading campaign map…');
+    await expect(page.locator('#hp-loading svg')).toBeVisible();
     await expect(page.locator('#campaign-menu')).toBeHidden();
   } finally {
     script.resolve();
@@ -88,8 +90,26 @@ test('existing campaign paints a sized workspace before its map module loads', a
     await expect(page.locator('#campaign-menu')).toBeHidden();
     await expect(workspace).toHaveAttribute('aria-busy', 'true');
     await expect(workspace.getByText('Test campaign', { exact: true })).toBeVisible();
-    await expect(workspace.getByText('Preparing the landscape…', { exact: true })).toBeVisible();
+    await expect(page.locator('#hp-loading')).toHaveText('Loading campaign map…');
+    await expect(page.locator('#hp-loading svg')).toBeVisible();
     await expect(page.locator('#hp-scene canvas')).toHaveCount(0);
+    const projection = await page.locator('.hp-map-skeleton').evaluate((element) => {
+      if (!(element instanceof SVGSVGElement)) throw new Error('Missing skeleton SVG');
+      const matrix = element.getScreenCTM();
+      if (!matrix) throw new Error('Missing skeleton projection');
+      const box = element.getBoundingClientRect();
+      return {
+        scaleX: matrix.a,
+        scaleY: matrix.d,
+        width: box.width,
+        centerX: matrix.e - box.x - box.width / 2,
+        centerY: matrix.f - box.y - box.height / 2,
+      };
+    });
+    expect(projection.scaleX).toBeCloseTo(projection.width / (CAMPAIGN_HEXES_WIDE * 2), 5);
+    expect(projection.scaleY).toBeCloseTo(projection.scaleX, 5);
+    expect(projection.centerX).toBeCloseTo(0, 5);
+    expect(projection.centerY).toBeCloseTo(0, 5);
     shellBox = await map.boundingBox();
     expect(shellBox).not.toBeNull();
     expect(shellBox?.y).toBeLessThan(20);
@@ -146,7 +166,8 @@ test('existing campaign paints a sized workspace before its map module loads', a
   });
   try {
     await page.getByRole('button', { name: 'Enter Test campaign', exact: true }).click();
-    await expect(workspace.getByText('Preparing the landscape…', { exact: true })).toBeVisible();
+    await expect(page.locator('#hp-loading')).toHaveText('Loading campaign map…');
+    await expect(page.locator('#hp-loading svg')).toBeVisible();
     await expect(page.locator('#campaign-menu')).toBeHidden();
     await expect(page.locator('#hp-scene canvas')).toHaveCount(1);
     await expect(page.locator('#hp-scene canvas')).toBeHidden();
