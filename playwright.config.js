@@ -9,6 +9,7 @@ export default defineConfig({
     '**/account.spec.js',
     '**/journal-pagination.spec.js',
     '**/deferred-previews.spec.js',
+    '**/campaign-preparation.spec.js',
   ],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),

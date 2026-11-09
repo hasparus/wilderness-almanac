@@ -174,6 +174,10 @@ with a short stagger inside each unchanged 4×4 batch. Cached reveals replay wit
 rebuilding; restrictive updates stay instant. Movement off and reduced motion
 skip arrivals. Campaign entry shows its sized loading workspace before renderer
 loading or generation, rather than preparing it behind the campaigns list.
+Renderer loading starts alongside pure campaign preparation after the shell can
+paint; only successful, active entry commits the prepared session. Mountain
+surfaces are reused across dressing and presentation with mutation-safe numeric
+snapshots and independent returned buffers.
 Campaign river/mouth triangulation is deferred until a geometry, lighting,
 selection or party consumer needs it, with exact numeric results cached across
 source/fog copies. Other `prepareMap` callers remain eager. Pending chunks follow

@@ -55,7 +55,7 @@ async function observeFogSwap(canvas, fog, interrupt = false) {
             grace = window.setTimeout(() => {
               observer.disconnect();
               clearTimeout(timeout);
-              resolve({ states, interrupted, immediate });
+              resolve({ states, interrupted, immediate, immediateChecked });
             }, 250);
           }
         });
@@ -66,6 +66,7 @@ async function observeFogSwap(canvas, fog, interrupt = false) {
         });
         toggle.click();
         const immediate = canvas.getAttribute('data-render-state');
+        const immediateChecked = toggle.getAttribute('aria-checked');
       }),
     { toggle, interrupt },
   );
@@ -143,6 +144,7 @@ for (const artStyle of ['low-poly', 'pixelart']) {
     const concealed = await canvas.screenshot(screenshotOptions);
 
     const cold = await observeFogSwap(canvas, fog, true);
+    expect(cold.immediateChecked, 'fog state changes before yielding to a frame').toBe('false');
     expect(cold.immediate).toBe('building');
     expect(cold.states).toEqual(['building', 'settling', 'ready']);
     expect(cold.interrupted).toEqual({ state: 'settling', busy: 'true', enabled: true });
@@ -156,6 +158,9 @@ for (const artStyle of ['low-poly', 'pixelart']) {
 
     for (const concealedAgain of [false, true]) {
       const warm = await observeFogSwap(canvas, fog);
+      expect(warm.immediateChecked, 'cached toggles also apply in the same task').toBe(
+        String(concealedAgain),
+      );
       expect(warm.immediate).toBe(concealedAgain ? 'ready' : 'settling');
       expect(
         warm.states,

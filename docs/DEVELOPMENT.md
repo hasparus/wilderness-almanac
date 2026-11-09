@@ -92,6 +92,14 @@ triangle order, bevels and clipped water remain unchanged. River triangulation
 reuses sector lattice samples and skips island-bank comparisons for empty island
 fields; it retains the cross-sector lookup and first-encounter ordering.
 
+Mountain preparation uses a weak world/dressing identity cache guarded by value
+snapshots of every consumed topology, shape and revision input. Dressing placement,
+locked-prop adjustment and map preparation reuse the numeric work, while every
+caller receives independent mutable maps and arrays. In-place input edits invalidate
+the cache; custom ridge closures bypass it. Nothing is added to saved dressing.
+When adding mountain inputs or output fields, update both the signature and copying
+logic and retain uncached-output/mutation tests.
+
 Only generator **10** is supported. The number remains explicit in campaigns and
 shared URLs; unsupported versions are rejected. Refactors must preserve current
 world/dressing hashes and visuals. Future intentional generation changes require
@@ -108,7 +116,13 @@ changes survive hex Undo; navigation guards unsaved form drafts.
 Campaign entry commits the workspace loading shell before importing the renderer
 or generating the world. The shell restores panel sizing and the campaign title,
 conceals retained canvas/details without collapsing their boxes, and paints before
-synchronous preparation starts. Only one view participates in layout. Navigation
+synchronous preparation starts. After that paint opportunity, renderer loading and
+pure `prepareCampaignMap` data preparation start together, so module fetching can
+overlap main-thread generation. This is not worker execution or speculative
+prewarming. `prepareCampaignEntry` observes both failures; `session.openPrepared`
+commits/saves only after both succeed and the entry remains active. Synchronous
+`session.open` uses the same commit path. New replay links reuse the base world
+already generated for their campaign record. Only one view participates in layout. Navigation
 remains queued; failed imports or WebGL setup return to the menu with controls
 restored. The shell ends after `setMap` schedules rendering, not after all chunks
 finish. Direct campaign URLs suppress the library before the app module starts
@@ -132,6 +146,12 @@ synchronous for creation, embeds and callers outside campaign scheduling.
 synchronous `createMapRenderer` for creation previews. Inspector thumbnails, party
 previews and website embeds retain the synchronous renderer. React/Fiber stay
 behind this lazy entry; there is one WebGL context per renderer, not one per chunk.
+
+Fog toggles apply directly after the unsaved-edit guard, without the two-frame
+feedback wait in `mapAction.run`. Missing chunks are scheduled by the renderer;
+cache hits and restrictive concealment apply in the same task. Keep the paint
+opportunity for heavy synchronous actions such as regeneration. Browser checks
+assert switch and renderer state immediately after dispatch, before yielding.
 
 `incremental-builds.js` owns axial 4×4 chunks, with a source and latest fog record
 per chunk. New geometry is built outside React in roughly 8 ms RAF slices (one
@@ -222,8 +242,10 @@ including signed zero and ordering, for generated, edited and locked river repla
 Browser fixtures seed current IndexedDB records directly through `e2e/data.js`.
 They do not depend on localStorage campaign migration. The journal pagination component check imports source modules and runs through `test:workspace`, separately from production-build tests. Simulated failures stay in
 test setup and browser contexts are isolated. Campaign preview scheduling is
-covered by `e2e/deferred-previews.spec.js` in the source-served workspace suite,
-with asserted test-only instrumentation; production-bundle suites exclude it.
+covered by `e2e/deferred-previews.spec.js` in the source-served workspace suite.
+`e2e/campaign-preparation.spec.js` holds the renderer import to verify concurrent
+preparation, failed-import persistence isolation and retry. Both use asserted
+test-only instrumentation and are excluded from production-bundle suites.
 
 `node tools/render-default-icon.mjs /tmp/default-icon.svg` renders the bundled
 fallback from shared mesh builders without WebGL; rasterize at 384px with
