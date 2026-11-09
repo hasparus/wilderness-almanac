@@ -33,6 +33,7 @@ import { createWorkspaceControls } from './ui/workspace-controls.js';
 import { createMapSelection, PARTY_SELECTION } from './ui/map-selection.js';
 import { hexAddress } from './generation/hex.js';
 import { observeDeferredMapWork } from './ui/deferred-map-work.js';
+import { prepareCampaignEntry } from './ui/prepare-campaign-entry.js';
 
 const root = document.getElementById('campaign-workspace');
 const navigation = createViewNavigation(document.getElementById('campaign-menu'), root);
@@ -246,7 +247,8 @@ async function loadMapView() {
   return mapView;
 }
 
-async function openCampaign(campaign, { fromHistory = false } = {}) {
+/** @param {ReturnType<typeof createCampaign>} campaign @param {{fromHistory?: boolean, baseWorld?: ReturnType<typeof generateWorld>}} [options] */
+async function openCampaign(campaign, { fromHistory = false, baseWorld } = {}) {
   renderer?.cancelInteraction();
   try {
     const opened = await navigation.show(
@@ -269,10 +271,13 @@ async function openCampaign(campaign, { fromHistory = false } = {}) {
         });
       },
       async () => {
-        await loadMapView();
-        if (disposed) return false;
+        const prepared = await prepareCampaignEntry(campaign, loadMapView, {
+          baseWorld,
+          active: () => !disposed,
+        });
+        if (!prepared) return false;
         const keepView = Boolean(renderer && session.snapshot()?.campaign.id === campaign.id);
-        session.open(campaign);
+        session.openPrepared(campaign, prepared);
         presentCampaign({ resetView: !keepView });
         loadingShell.finish();
         if (!fromHistory) campaignHistory?.enter(session.snapshot().campaign);
@@ -1090,10 +1095,10 @@ function showInitialMenu() {
   campaignMenu.show();
   document.title = 'The Wilderness Almanac';
 }
-/** @param {ReturnType<typeof createCampaign>} campaign @returns {Promise<void>} */
-async function openInitialCampaign(campaign) {
+/** @param {ReturnType<typeof createCampaign>} campaign @param {ReturnType<typeof generateWorld>} [baseWorld] @returns {Promise<void>} */
+async function openInitialCampaign(campaign, baseWorld) {
   try {
-    await openCampaign(campaign);
+    await openCampaign(campaign, { baseWorld });
   } catch (error) {
     showInitialMenu();
     const message = document.getElementById('campaign-message');
@@ -1117,13 +1122,15 @@ if (linked.error) {
     campaignId: campaignHistory.initialCampaignId ?? saved.campaignId,
   };
   let campaign = campaignMenu.findReplay(state);
+  let baseWorld;
   if (!campaign) {
     await afterPaint();
+    baseWorld = generateWorld(linked.seed, {
+      generatorVersion: linked.generatorVersion ?? GENERATOR_VERSION,
+      preferences: linked.preferences,
+    });
     campaign = createCampaign(
-      generateWorld(linked.seed, {
-        generatorVersion: linked.generatorVersion ?? GENERATOR_VERSION,
-        preferences: linked.preferences,
-      }),
+      baseWorld,
       initialColors,
       paletteLabel(initialColors),
       initialVariant,
@@ -1132,7 +1139,7 @@ if (linked.error) {
     );
     await campaignMenu.add(campaign);
   }
-  void openInitialCampaign(campaign);
+  void openInitialCampaign(campaign, baseWorld);
 } else showInitialMenu();
 if (import.meta.hot)
   import.meta.hot.dispose(() => {

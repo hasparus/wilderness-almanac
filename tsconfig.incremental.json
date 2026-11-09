@@ -28,6 +28,8 @@
     "tests/river-surface-optimization.test.js",
     "src/ui/deferred-map-work.js",
     "tests/deferred-map-work.test.js",
+    "src/ui/prepare-campaign-entry.js",
+    "tests/prepare-campaign-entry.test.js",
     "tests/viewport-priority.test.js",
     "tests/river-surface-cache.test.js",
     "tests/deferred-river-rendering.test.js",

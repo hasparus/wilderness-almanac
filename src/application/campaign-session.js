@@ -1,5 +1,6 @@
 import { computeFogOfWar } from './fog-of-war.js';
 import { generateWorld } from '../generation/world.js';
+import { prepareCampaignMap } from './prepare-campaign-map.js';
 import {
   campaignWorld,
   campaignDressing,
@@ -172,15 +173,17 @@ export function createCampaignSession({ persist }) {
       return { ok: false, error: error.message };
     }
   }
-  function open(
-    campaign,
-    baseWorld = generateWorld(campaign.seed, {
-      preferences: campaign.preferences,
-      generatorVersion: campaign.generatorVersion,
-    }),
-  ) {
-    const world = campaignWorld(campaign, baseWorld);
-    const dressing = campaignDressing(campaign, world);
+  /** @param {ReturnType<typeof import('./campaigns.js').createCampaign>} campaign @param {ReturnType<typeof generateWorld>} [baseWorld] */
+  function open(campaign, baseWorld) {
+    return openPrepared(campaign, prepareCampaignMap(campaign, baseWorld));
+  }
+  /**
+   * Commit only after entry dependencies succeed. The synchronous open API uses
+   * this same path, including initial visits, history reset and persistence.
+   * @param {ReturnType<typeof import('./campaigns.js').createCampaign>} campaign
+   * @param {ReturnType<typeof prepareCampaignMap>} prepared
+   */
+  function openPrepared(campaign, { baseWorld, world, dressing }) {
     let record = {
       ...campaign,
       colors: campaign.colors.slice(),
@@ -201,6 +204,7 @@ export function createCampaignSession({ persist }) {
     snapshot,
     save,
     open,
+    openPrepared,
     setTimeOfDay(value) {
       if (!TIMES_OF_DAY.includes(value)) return { ok: false, error: 'Choose a valid time of day.' };
       state = { ...state, campaign: { ...state.campaign, timeOfDay: value } };
