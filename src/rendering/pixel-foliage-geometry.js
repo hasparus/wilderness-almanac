@@ -1,4 +1,6 @@
-import { BufferGeometry, Float32BufferAttribute } from 'three';
+import { BufferAttribute, BufferGeometry } from 'three';
+
+const crownTemplates = new WeakMap();
 
 // Merge exposed geometry independently of pixel colour boundaries.
 export function voxelFaces({ dims, step, origin, data, shade }) {
@@ -171,11 +173,27 @@ export function packFoliageAtlas(forms, { compact = false } = {}) {
   return { width, height, indices, crowns };
 }
 
+export function crownTemplate(crown) {
+  let template = crownTemplates.get(crown);
+  if (!template) {
+    const IndexArray = crown.indices.some((index) => index >= 65535) ? Uint32Array : Uint16Array;
+    template = Object.freeze({
+      position: new Float32Array(crown.points),
+      normal: new Float32Array(crown.normals),
+      uv: new Float32Array(crown.uvs),
+      index: new IndexArray(crown.indices),
+    });
+    crownTemplates.set(crown, template);
+  }
+  return template;
+}
+
 export function crownGeometry(crown) {
+  const template = crownTemplate(crown);
   const geometry = new BufferGeometry();
-  geometry.setAttribute('position', new Float32BufferAttribute(crown.points, 3));
-  geometry.setAttribute('normal', new Float32BufferAttribute(crown.normals, 3));
-  geometry.setAttribute('uv', new Float32BufferAttribute(crown.uvs, 2));
-  geometry.setIndex(crown.indices);
+  geometry.setAttribute('position', new BufferAttribute(template.position, 3));
+  geometry.setAttribute('normal', new BufferAttribute(template.normal, 3));
+  geometry.setAttribute('uv', new BufferAttribute(template.uv, 2));
+  geometry.setIndex(new BufferAttribute(template.index, 1));
   return geometry;
 }

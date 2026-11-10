@@ -2,6 +2,7 @@
 import { DIRECTIONS, directionTo } from './hex.js';
 import { randomFor } from './seed.js';
 import { riverSurface } from './river-surfaces.js';
+import { deferRiverSurface } from './river-surface-cache.js';
 import { prepareMountainRanges } from './mountain-surfaces.js';
 
 const APOTHEM = Math.sqrt(3) / 2;
@@ -103,7 +104,7 @@ export function riverFieldFor(cell, fields) {
   };
 }
 
-export function prepareMap(world, dressing, { cellKeys } = {}) {
+export function prepareMap(world, dressing, { cellKeys, deferRiverSurfaces = false } = {}) {
   const fields = prepareRiverGeometry(world);
   const { byKey, mouths } = fields;
   const dressByKey = new Map(dressing.cells.map((cell) => [cell.key, cell]));
@@ -148,7 +149,7 @@ export function prepareMap(world, dressing, { cellKeys } = {}) {
       data.hasIsland = data.river.islands.some(
         (segment) => Math.hypot(segment[0][0] - cell.wx, segment[0][1] - cell.wz) < 0.8,
       );
-      data.riverSurface = riverSurface(data);
+      data.riverSurface = deferRiverSurfaces ? deferRiverSurface(data) : riverSurface(data);
     }
     if (cell.water) data.waterDepth = waterDepthSurface(cell, byKey);
     if (openWater) {

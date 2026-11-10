@@ -1,21 +1,105 @@
+// @ts-check
 import { DIRECTIONS } from './hex.js';
 import { TOP_RADIUS } from './math.js';
 import { ridgeSurface } from './ridge-surface.js';
 import { randomFor } from './seed.js';
 import { mountainRidges } from './mountain-ridges.js';
 
+/**
+ * @typedef {{ key: string, q: number, r: number, wx: number, wz: number, elevation: number }} MountainCell
+ * @typedef {{ seed: string, cells: MountainCell[], elevation: {
+ *   ranges: { id: string, hexKeys: string[] }[],
+ * } }} MountainWorld
+ * @typedef {{ rangeId: string, phase: number, angle: number, heightScale: number, profile?: number }} MountainShape
+ * @typedef {{ mountains: MountainShape[], revisions?: Record<string, number> }} MountainDressing
+ * @typedef {{ vertices: number[][], triangles: number[][] }} MountainSurface
+ * @typedef {{ type: string, shared: boolean[], corners: number[][], surface: MountainSurface }} MountainData
+ * @typedef {(string | number | undefined)[]} MountainSignature
+ */
+
+/** @type {WeakMap<MountainWorld, WeakMap<MountainDressing, {
+ *   signature: MountainSignature, surfaces: Map<string, MountainData>,
+ * }>>} */
+const prepared = new WeakMap();
+
+/** @param {MountainWorld} world @param {MountainDressing} dressing */
+function mountainSignature(world, dressing) {
+  /** @type {MountainSignature} */
+  const signature = [world.seed, world.cells.length];
+  for (const cell of world.cells)
+    signature.push(
+      cell.key,
+      cell.q,
+      cell.r,
+      cell.wx,
+      cell.wz,
+      cell.elevation,
+      dressing.revisions?.[cell.key],
+    );
+  signature.push(world.elevation.ranges.length);
+  for (const range of world.elevation.ranges)
+    signature.push(range.id, range.hexKeys.length, ...range.hexKeys);
+  signature.push(dressing.mountains.length);
+  for (const shape of dressing.mountains)
+    signature.push(shape.rangeId, shape.phase, shape.angle, shape.heightScale, shape.profile);
+  return signature;
+}
+
+/** @param {Map<string, MountainData>} surfaces */
+function cloneSurfaces(surfaces) {
+  return new Map(
+    [...surfaces].map(([key, data]) => [
+      key,
+      {
+        type: data.type,
+        shared: data.shared.slice(),
+        corners: data.corners.map((point) => point.slice()),
+        surface: {
+          vertices: data.surface.vertices.map((vertex) => vertex.slice()),
+          triangles: data.surface.triangles.map((triangle) => triangle.slice()),
+        },
+      },
+    ]),
+  );
+}
+
+/** @param {MountainWorld} world @param {MountainDressing} dressing */
+export function prepareMountainRanges(world, dressing) {
+  if (dressing.mountains.some((shape) => shape.profile !== 1 && 'ridges' in shape))
+    return buildMountainRanges(world, dressing);
+  const signature = mountainSignature(world, dressing);
+  let dressings = prepared.get(world);
+  const cached = dressings?.get(dressing);
+  if (
+    cached &&
+    cached.signature.length === signature.length &&
+    signature.every((value, index) => Object.is(value, cached.signature[index]))
+  )
+    return cloneSurfaces(cached.surfaces);
+  const surfaces = buildMountainRanges(world, dressing);
+  if (!dressings) prepared.set(world, (dressings = new WeakMap()));
+  dressings.set(dressing, { signature, surfaces });
+  return cloneSurfaces(surfaces);
+}
+
 // Build broad, faceted ranges. A single height field per range
 // keeps neighbouring mountain tiles joined instead of placing isolated cones.
-export function prepareMountainRanges(world, dressing) {
+/** @param {MountainWorld} world @param {MountainDressing} dressing */
+function buildMountainRanges(world, dressing) {
   const byKey = new Map(world.cells.map((cell) => [cell.key, cell]));
   const shapes = new Map(dressing.mountains.map((shape) => [shape.rangeId, shape]));
+  /** @type {Map<string, Omit<MountainData, 'surface'> & { surface?: MountainSurface }>} */
   const result = new Map();
   for (const range of world.elevation.ranges) {
     const shape = shapes.get(range.id);
     if (!shape) continue;
-    const cells = range.hexKeys.map((key) => byKey.get(key)).filter((cell) => cell.elevation === 4);
+    const cells = range.hexKeys
+      .map((key) => /** @type {MountainCell} */ (byKey.get(key)))
+      .filter((cell) => cell.elevation === 4);
     if (!cells.length) continue;
     const keys = new Set(cells.map((cell) => cell.key));
+    /** @type {MountainShape & { boundary: number[][][], spines: number[][][],
+     *   ridges?: ReturnType<typeof mountainRidges> }} */
     const field = { ...shape, boundary: [], spines: [] };
     for (const cell of cells) {
       const shared = DIRECTIONS.map(([q, r]) => keys.has(`${cell.q + q},${cell.r + r}`));
@@ -33,7 +117,7 @@ export function prepareMountainRanges(world, dressing) {
       for (let k = 0; k < 3; k++) {
         if (!shared[k]) continue;
         const [q, r] = DIRECTIONS[k];
-        const next = byKey.get(`${cell.q + q},${cell.r + r}`);
+        const next = /** @type {MountainCell} */ (byKey.get(`${cell.q + q},${cell.r + r}`));
         field.spines.push([
           [cell.wx, cell.wz],
           [next.wx, next.wz],
@@ -42,7 +126,7 @@ export function prepareMountainRanges(world, dressing) {
     }
     if (shape.profile === 1) field.ridges = mountainRidges(cells, shape, world.seed);
     for (const cell of cells) {
-      const data = result.get(cell.key);
+      const data = /** @type {MountainData} */ (result.get(cell.key));
       data.surface = ridgeSurface({ ...cell, corners: data.corners }, field);
       // Keep the existing low-poly facets but limit their added silhouette.
       for (const vertex of data.surface.vertices) vertex[1] *= shape.heightScale;
@@ -65,5 +149,5 @@ export function prepareMountainRanges(world, dressing) {
       }
     }
   }
-  return result;
+  return /** @type {Map<string, MountainData>} */ (result);
 }

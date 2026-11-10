@@ -26,14 +26,26 @@ import { createPartyJournal } from './ui/party-journal.js';
 import { createBatchInspector } from './ui/batch-inspector.js';
 import { createMapAction } from './ui/map-action.js';
 import { loadThumbnails, saveThumbnails } from './ui/thumbnail-cache.js';
-import { createViewNavigation } from './ui/view-navigation.js';
+import { afterPaint, createViewNavigation } from './ui/view-navigation.js';
+import { createCampaignLoadingShell } from './ui/campaign-loading-shell.js';
+import { CAMPAIGN_HEXES_WIDE } from './map-framing.js';
 import { createControlTooltips } from './ui/control-help.js';
 import { createWorkspaceControls } from './ui/workspace-controls.js';
 import { createMapSelection, PARTY_SELECTION } from './ui/map-selection.js';
 import { hexAddress } from './generation/hex.js';
+import { observeDeferredMapWork } from './ui/deferred-map-work.js';
+import { prepareCampaignEntry } from './ui/prepare-campaign-entry.js';
 
 const root = document.getElementById('campaign-workspace');
 const navigation = createViewNavigation(document.getElementById('campaign-menu'), root);
+const loadingShell = createCampaignLoadingShell(root);
+if (document.documentElement.hasAttribute('data-campaign-entry')) {
+  document.getElementById('campaign-menu').hidden = true;
+  root.hidden = false;
+  root.inert = true;
+  loadingShell.show('Opening campaign…');
+  document.documentElement.removeAttribute('data-campaign-entry');
+}
 const element = (id) => root.querySelector(`#hp-${id}`);
 const mapAction = createMapAction(root, (text) => {
   element('announcement').textContent = text;
@@ -77,8 +89,14 @@ let mapView;
 let mapViewLoading;
 let disposed = false;
 let iconCacheRevision = 0;
-let iconCacheTimer;
 let partyButtonSignature = '';
+let partyInspectorSignature = '';
+let inspectorPreviewIdentity = [];
+const deferredMapWork = observeDeferredMapWork(root, element('scene'), () => {
+  syncParty();
+  inspector?.refreshPreview();
+  partyInspector?.refreshPreview();
+});
 const session = createCampaignSession({ persist: persistCampaign });
 const initialVariant =
   linked.variant ?? (linked.seed && linked.seed !== saved.seed ? 0 : (saved.variant ?? 0));
@@ -128,7 +146,7 @@ const workspaceControls = createWorkspaceControls(root, {
   getState: session.snapshot,
   getRenderer: () => renderer,
   getLayout: () => displayView.layout,
-  isBusy: mapAction.isBusy,
+  isBusy: () => root.hasAttribute('data-loading') || mapAction.isBusy(),
   onPartyMove: (key) => handleAction(session.moveParty(key)),
   notify: (text) => mapConsole.notify(text),
   refreshPreview() {
@@ -140,7 +158,7 @@ const mapSelection = createMapSelection(root, {
   session,
   getRenderer: () => renderer,
   getInspectors: () => ({ hex: inspector, batch: batchInspector, party: partyInspector }),
-  isBusy: mapAction.isBusy,
+  isBusy: () => root.hasAttribute('data-loading') || mapAction.isBusy(),
   isMobile: workspaceControls.isMobile,
   syncSelection,
   onPartySelected() {
@@ -230,30 +248,52 @@ async function loadMapView() {
   return mapView;
 }
 
-async function openCampaign(campaign, { fromHistory = false } = {}) {
+/** @param {ReturnType<typeof createCampaign>} campaign @param {{fromHistory?: boolean, baseWorld?: ReturnType<typeof generateWorld>}} [options] */
+async function openCampaign(campaign, { fromHistory = false, baseWorld } = {}) {
   renderer?.cancelInteraction();
   try {
-    const opened = await navigation.show('forward', async () => {
-      await loadMapView();
-      if (disposed) return false;
-      const keepView = Boolean(renderer && session.snapshot()?.campaign.id === campaign.id);
-      const local = campaignSettings[campaign.id] ?? {};
-      movement = local.motion ?? defaultMovement;
-      campaignTimeIncrement = local.timeIncrement ?? defaultTimeIncrement;
-      panels.enterCampaign(campaign.id, {
-        journalFirst: local.journalFirst ?? defaultJournalFirst,
-      });
-      session.open(campaign);
-      presentCampaign({ resetView: !keepView });
-      if (!fromHistory) campaignHistory?.enter(session.snapshot().campaign);
-    });
+    const opened = await navigation.show(
+      'forward',
+      () => {
+        loadingShell.show(campaign.name);
+        deferredMapWork.clear();
+        iconCacheRevision++;
+        partyButtonSignature = '';
+        element('find-party-preview').hidden = true;
+        element('find-party').querySelector('svg').removeAttribute('hidden');
+        renderer?.setMotion(false);
+        const local = campaignSettings[campaign.id] ?? {};
+        movement = local.motion ?? defaultMovement;
+        campaignTimeIncrement = local.timeIncrement ?? defaultTimeIncrement;
+        panels.setMultiEdit(false);
+        panels.setInspectorMode('hex');
+        panels.enterCampaign(campaign.id, {
+          journalFirst: local.journalFirst ?? defaultJournalFirst,
+        });
+      },
+      async () => {
+        const prepared = await prepareCampaignEntry(campaign, loadMapView, {
+          baseWorld,
+          active: () => !disposed,
+        });
+        if (!prepared) return false;
+        const keepView = Boolean(renderer && session.snapshot()?.campaign.id === campaign.id);
+        session.openPrepared(campaign, prepared);
+        presentCampaign({ resetView: !keepView });
+        loadingShell.finish();
+        if (!fromHistory) campaignHistory?.enter(session.snapshot().campaign);
+      },
+    );
     if (opened) {
       inspector.refreshPreview();
     }
     return opened;
   } catch (error) {
     renderer?.setMotion(false);
+    document.title = 'The Wilderness Almanac';
     throw error;
+  } finally {
+    loadingShell.finish();
   }
 }
 
@@ -263,7 +303,7 @@ function presentCampaign({ resetView = false } = {}) {
   batchInspector.reset();
   root.hidden = false;
   if (!renderer)
-    renderer = mapView.createMapRenderer(element('scene'), {
+    renderer = mapView.createCampaignMapRenderer(element('scene'), {
       motion: movement,
       touchMultiSelect: true,
       onPartyMove: mapSelection.moveParty,
@@ -278,7 +318,7 @@ function presentCampaign({ resetView = false } = {}) {
   syncTimeOfDay();
   applyPalette();
   renderWorld({ resetView });
-  renderer?.focus(campaign.partyToken.key, { hexesWide: 9 / 1.2 });
+  renderer?.focus(campaign.partyToken.key, { hexesWide: CAMPAIGN_HEXES_WIDE });
   root.querySelector('.hp-title').textContent = campaign.name;
   document.title = `${campaign.name} · Wilderness Almanac`;
   root.dataset.mapName = world.name;
@@ -290,9 +330,10 @@ function presentCampaign({ resetView = false } = {}) {
 
 function scheduleCampaignIcons() {
   const revision = ++iconCacheRevision;
-  clearTimeout(iconCacheTimer);
-  // Let the map and page transition paint before preparing still previews.
-  iconCacheTimer = setTimeout(() => void cacheCampaignIcons(revision), 300);
+  deferredMapWork.cancel('gallery-tile');
+  void deferredMapWork.enqueue('gallery-start', () => {
+    void cacheCampaignIcons(revision);
+  });
 }
 
 async function cacheCampaignIcons(revision) {
@@ -312,13 +353,15 @@ async function cacheCampaignIcons(revision) {
       if (!current()) return;
       let entry = cached.get(key);
       if (!entry) {
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        const image = await deferredMapWork.enqueue('gallery-tile', () => {
+          if (!current()) return '';
+          return mapView.tilePreview(
+            tiles?.find((tile) => tile.key === key),
+            campaign.colors,
+            { artStyle: campaign.artStyle },
+          );
+        });
         if (!current()) return;
-        const image = mapView.tilePreview(
-          tiles?.find((tile) => tile.key === key),
-          campaign.colors,
-          { artStyle: campaign.artStyle },
-        );
         if (image) entry = { key, image };
       }
       if (!entry && key === campaign.iconKey) return;
@@ -416,7 +459,7 @@ function refreshPresentation({ resetView = false } = {}) {
 
 function renderWorld({ resetView = false } = {}) {
   const { world, dressing, campaign } = session.snapshot();
-  layout = prepareMap(world, dressing);
+  layout = prepareMap(world, dressing, { deferRiverSurfaces: true });
   refreshPresentation({ resetView });
   syncSelection();
   root.dataset.variant = String(campaign.variant);
@@ -469,20 +512,28 @@ function syncParty() {
       campaign.colors,
       campaign.artStyle,
     ]);
+    deferredMapWork.cancel('party-button');
     if (signature !== partyButtonSignature) {
-      const src = mapView.partyPreview(
-        campaign.partyToken,
-        campaign.colors,
-        color,
-        campaign.artStyle,
-      );
-      if (src) {
-        const image = element('find-party-preview');
-        image.src = src;
-        image.hidden = false;
-        element('find-party').querySelector('svg').setAttribute('hidden', '');
-        partyButtonSignature = signature;
-      }
+      element('find-party-preview').hidden = true;
+      element('find-party').querySelector('svg').removeAttribute('hidden');
+      void deferredMapWork.enqueue('party-button', () => {
+        const src = mapView.partyPreview(
+          campaign.partyToken,
+          campaign.colors,
+          color,
+          campaign.artStyle,
+        );
+        if (src) {
+          const image = element('find-party-preview');
+          image.src = src;
+          image.hidden = false;
+          element('find-party').querySelector('svg').setAttribute('hidden', '');
+          partyButtonSignature = signature;
+        }
+      });
+    } else {
+      element('find-party-preview').hidden = false;
+      element('find-party').querySelector('svg').setAttribute('hidden', '');
     }
   }
 }
@@ -580,12 +631,14 @@ function toggleMultiEdit() {
   if (!mapAction.isBusy() && activeInspector().beforeLeave(change)) change();
 }
 async function showMenu() {
-  renderer?.cancelInteraction();
-  workspaceControls.setExpanded(false);
-  session.save();
-  renderer?.setMotion(false);
-  document.title = 'The Wilderness Almanac';
   await navigation.show('back', () => {
+    deferredMapWork.clear();
+    iconCacheRevision++;
+    renderer?.cancelInteraction();
+    workspaceControls.setExpanded(false);
+    session.save();
+    renderer?.setMotion(false);
+    document.title = 'The Wilderness Almanac';
     campaignMenu.show();
   });
 }
@@ -603,8 +656,18 @@ listen(preset, 'change', () => {
 function updateInspector() {
   const state = session.snapshot();
   if (!state) return;
+  deferredMapWork.cancel('hex-inspector');
+  deferredMapWork.cancel('party-inspector');
   const { dressing, selected, campaign, canUndo } = state;
   if (state.partySelected) {
+    partyInspectorHost.querySelector('#hp-party-preview').hidden =
+      partyInspectorSignature !==
+      JSON.stringify([
+        campaign.partyToken.style,
+        campaign.colors.join(','),
+        campaign.partyToken.color ?? mapView.partyColor(campaign.colors),
+        campaign.artStyle,
+      ]);
     partyInspector?.update({ ...state, visibleWorld: displayView.world });
     return;
   }
@@ -626,6 +689,12 @@ function updateInspector() {
   const cell = cellsByKey.get(selected);
   if (!cell || !dressing || !layout) return;
   const edit = campaign.hexEdits?.cells[selected];
+  const tile = displayView.layout.find((entry) => entry.key === selected);
+  singleInspectorHost.querySelector('#hp-hex-preview').hidden = ![
+    tile,
+    colors.join(','),
+    campaign.artStyle,
+  ].every((value, index) => value === inspectorPreviewIdentity[index]);
   inspector?.update({
     world: displayView.world,
     cell,
@@ -714,17 +783,36 @@ partyInspector = createPartyInspector(partyInspectorHost, {
       },
       'Selecting…',
     ),
-  preview: (party, colors, color) =>
-    mapView?.partyPreview(party, colors, color, session.snapshot()?.campaign.artStyle) ?? '',
+  preview: (party, colors, color) => {
+    const artStyle = session.snapshot()?.campaign.artStyle;
+    const identity = [party.style, colors.join(','), color, artStyle];
+    const src = deferredMapWork.preview(
+      'party-inspector',
+      identity,
+      () => mapView?.partyPreview(party, colors, color, artStyle) ?? '',
+      () => partyInspector.refreshPreview(),
+    );
+    partyInspectorHost.querySelector('#hp-party-preview').hidden = !src;
+    if (src) partyInspectorSignature = JSON.stringify(identity);
+    return src;
+  },
   colorFor: (colors) => mapView.partyColor(colors),
   visible: panels.partyVisible,
 });
 inspector = createHexInspector(singleInspectorHost, {
   visible: panels.inspectorVisible,
-  preview: (tile, colors) =>
-    mapView?.tilePreview(tile, colors, {
-      artStyle: session.snapshot()?.campaign.artStyle,
-    }) ?? '',
+  preview: (tile, colors) => {
+    const artStyle = session.snapshot()?.campaign.artStyle;
+    const identity = [tile, colors.join(','), artStyle];
+    const src = deferredMapWork.preview(
+      'hex-inspector',
+      identity,
+      () => mapView?.tilePreview(tile, colors, { artStyle }) ?? '',
+      () => inspector.refreshPreview(),
+    );
+    if (src) inspectorPreviewIdentity = identity;
+    return src;
+  },
   onApply: (patch, button) => mapAction.run(button, () => handleAction(session.apply(patch))),
   onVisit: (event) =>
     mapAction.run(event.currentTarget, () => handleAction(session.visit()), 'Updating visit…'),
@@ -1000,29 +1088,50 @@ campaignHistory = createCampaignHistory({
     }
   },
 });
+/** Restore the library when startup does not resolve to a campaign. @returns {void} */
+function showInitialMenu() {
+  loadingShell.finish();
+  root.hidden = true;
+  root.inert = false;
+  campaignMenu.show();
+  document.title = 'The Wilderness Almanac';
+}
+/** @param {ReturnType<typeof createCampaign>} campaign @param {ReturnType<typeof generateWorld>} [baseWorld] @returns {Promise<void>} */
+async function openInitialCampaign(campaign, baseWorld) {
+  try {
+    await openCampaign(campaign, { baseWorld });
+  } catch (error) {
+    showInitialMenu();
+    const message = document.getElementById('campaign-message');
+    message.textContent = `Could not open the map. ${error.message}`;
+    message.dataset.kind = 'error';
+  }
+}
 const routedCampaign = campaignMenu
   .snapshotCampaigns()
   .find((campaign) => campaign.id === campaignHistory.initialCampaignId);
 if (linked.error) {
-  campaignMenu.show();
+  showInitialMenu();
   const message = document.getElementById('campaign-message');
   message.textContent = linked.error;
   message.dataset.kind = 'error';
 } else if (routedCampaign && matchesLink(routedCampaign)) {
-  campaignMenu.show();
-  campaignMenu.enter(routedCampaign);
+  void openInitialCampaign(routedCampaign);
 } else if (linked.seed) {
   const state = {
     ...replayState,
     campaignId: campaignHistory.initialCampaignId ?? saved.campaignId,
   };
   let campaign = campaignMenu.findReplay(state);
+  let baseWorld;
   if (!campaign) {
+    await afterPaint();
+    baseWorld = generateWorld(linked.seed, {
+      generatorVersion: linked.generatorVersion ?? GENERATOR_VERSION,
+      preferences: linked.preferences,
+    });
     campaign = createCampaign(
-      generateWorld(linked.seed, {
-        generatorVersion: linked.generatorVersion ?? GENERATOR_VERSION,
-        preferences: linked.preferences,
-      }),
+      baseWorld,
       initialColors,
       paletteLabel(initialColors),
       initialVariant,
@@ -1031,12 +1140,12 @@ if (linked.error) {
     );
     await campaignMenu.add(campaign);
   }
-  campaignMenu.enter(campaign);
-} else campaignMenu.show();
+  void openInitialCampaign(campaign, baseWorld);
+} else showInitialMenu();
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     disposed = true;
-    clearTimeout(iconCacheTimer);
+    deferredMapWork.dispose();
     iconCacheRevision++;
     navigation.dispose();
     campaignHistory.dispose();

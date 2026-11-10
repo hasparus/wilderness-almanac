@@ -111,9 +111,7 @@ for (const compact of [false, true])
         const expected = mergeGeometries(baked);
         const actual = mergePropParts(parts);
         assert.deepEqual(buffers(actual), buffers(expected));
-        actual.computeBoundingBox();
         expected.computeBoundingBox();
-        actual.computeBoundingSphere();
         expected.computeBoundingSphere();
         assert.deepEqual(actual.boundingBox, expected.boundingBox);
         assert.deepEqual(actual.boundingSphere, expected.boundingSphere);
@@ -172,6 +170,51 @@ test('foliage quantization keeps the intermediate Float32 rounding of normals an
   assert.equal(actual.attributes.swayWeight.array[0], 128);
   assert.deepEqual(buffers(actual), buffers(expected));
   for (const owned of [geometry, actual, expected]) owned.dispose();
+});
+
+test('packed bounds match Three.js for empty, degenerate and Float32-rounded positions', () => {
+  const options = { expand: false, compact: false, base: 0, phase: 0, uv: false };
+  for (const points of [
+    [],
+    [0, 0, 0],
+    [1, -2, 3, 1, -2, 3, 1, -2, 3],
+    [-1, 0, 0, 1, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, -1, 0, 0, 1],
+    [-16777216, 0.1, -0.2, 16777216, -0.3, 0.4, 1e-20, 0, -0],
+  ]) {
+    const source = new BufferGeometry();
+    source.setAttribute('position', new BufferAttribute(new Float32Array(points), 3));
+    source.setAttribute('normal', new BufferAttribute(new Float32Array(points.length), 3));
+    const matrix = new Matrix4().makeScale(-0.73, 2.37, 0).setPosition(0.123456789, -0.31, 1.7);
+    const actual = mergePropParts([describePropPart(source, matrix, options)]);
+    const expected = referenceBake(source, matrix, options);
+    expected.computeBoundingBox();
+    expected.computeBoundingSphere();
+    assert.deepEqual(actual.boundingBox, expected.boundingBox);
+    assert.deepEqual(actual.boundingSphere, expected.boundingSphere);
+    if (points.length === 0) {
+      const empty = mergePropParts([]);
+      assert.deepEqual(empty.boundingBox, expected.boundingBox);
+      assert.deepEqual(empty.boundingSphere, expected.boundingSphere);
+      empty.dispose();
+    }
+    for (const geometry of [source, actual, expected]) geometry.dispose();
+  }
+});
+
+test('packed sphere uses the furthest vertex rather than the box corner', () => {
+  const source = new BufferGeometry();
+  source.setAttribute(
+    'position',
+    new BufferAttribute(
+      new Float32Array([-1, 0, 0, 1, 0, 0, 0, -1, 0, 0, 1, 0, 0, 0, -1, 0, 0, 1]),
+      3,
+    ),
+  );
+  source.setAttribute('normal', new BufferAttribute(new Float32Array(18), 3));
+  const actual = mergePropParts([describePropPart(source, new Matrix4(), { phase: 0 })]);
+  assert.equal(actual.boundingSphere.radius, 1);
+  source.dispose();
+  actual.dispose();
 });
 
 test('rejects incompatible batches and unsupported component attributes', () => {

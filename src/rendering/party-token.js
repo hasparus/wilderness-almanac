@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { resolveRiverSurface } from '../generation/river-surface-cache.js';
 import { surfaceHeight } from '../generation/math.js';
 import { PARTY_STYLES } from '../application/party-token.js';
 import { createPartyPiece } from './party-piece.js';
@@ -53,7 +54,7 @@ export function createPartyToken({ host, draw, onMove, onSelect, artStyle = 'low
     if (!tile) return null;
     const x = -0.48,
       z = 0.31,
-      surface = tile.surface ?? tile.riverSurface;
+      surface = tile.surface ?? resolveRiverSurface(tile.riverSurface);
     return new THREE.Vector3(
       tile.g.position.x + x,
       tile.top + Math.max(0, surface ? surfaceHeight(surface, x, z) : 0) + 0.025,

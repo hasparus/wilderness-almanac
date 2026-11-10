@@ -1,9 +1,16 @@
+// @ts-check
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   outputDir: 'test-results/map',
   testDir: './e2e',
-  testIgnore: ['**/storage.spec.js', '**/account.spec.js', '**/journal-pagination.spec.js'],
+  testIgnore: [
+    '**/storage.spec.js',
+    '**/account.spec.js',
+    '**/journal-pagination.spec.js',
+    '**/deferred-previews.spec.js',
+    '**/campaign-preparation.spec.js',
+  ],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

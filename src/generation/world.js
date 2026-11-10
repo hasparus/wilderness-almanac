@@ -17,6 +17,10 @@ import { sandboxWorld } from './sandbox-world.js';
 export const GENERATOR_VERSION = 10;
 export const SUPPORTED_GENERATOR_VERSIONS = [GENERATOR_VERSION];
 
+/**
+ * @param {string | number} seed
+ * @param {{preferences?: Partial<Record<'water' | 'elevation' | 'forests' | 'settlements', number>>, generatorVersion?: number}} [options]
+ */
 export function generateWorld(seed, { preferences, generatorVersion = GENERATOR_VERSION } = {}) {
   if (!SUPPORTED_GENERATOR_VERSIONS.includes(generatorVersion))
     throw new Error('This campaign uses an unsupported map generator version.');

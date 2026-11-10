@@ -1,5 +1,7 @@
 import { test, expect, library, openCampaign } from './fixtures.js';
 
+const mapModule = /\/(?:assets\/map-view-[^/]+|src\/ui\/map-view)\.js(?:\?.*)?$/;
+
 test.use({ reducedMotion: 'no-preference' });
 
 test('new campaign previews before saving, paints loading feedback, and slides both ways', async ({
@@ -17,7 +19,7 @@ test('new campaign previews before saving, paints loading feedback, and slides b
   });
   let release;
   const loading = new Promise((resolve) => (release = resolve));
-  await page.route('**/assets/map-view-*.js', async (route) => {
+  await page.route(mapModule, async (route) => {
     await loading;
     await route.continue();
   });
@@ -79,7 +81,7 @@ test('new campaign previews before saving, paints loading feedback, and slides b
 test('failed map loading restores the menu controls and preserves the campaign', async ({
   page,
 }) => {
-  await page.route('**/assets/map-view-*.js', (route) => route.abort());
+  await page.route(mapModule, (route) => route.abort());
   await page.goto('/');
   await page.locator('.campaign-enter').click();
   await expect(page.locator('#campaign-message')).toContainText('Could not open the map.');
@@ -88,7 +90,7 @@ test('failed map loading restores the menu controls and preserves the campaign',
   await expect(page.locator('.campaign-enter')).not.toHaveAttribute('aria-busy');
   await expect(page.locator('#new-campaign')).toBeEnabled();
   expect((await library(page)).campaigns).toHaveLength(1);
-  await page.unroute('**/assets/map-view-*.js');
+  await page.unroute(mapModule);
   await page.reload();
   await openCampaign(page);
 });

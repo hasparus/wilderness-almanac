@@ -1,7 +1,9 @@
 # Development guide
 
-Wilderness Almanac uses vanilla JavaScript ES modules, Vite and pinned Three.js
-0.160.1. Generation and campaign data are independent of the DOM and Three.js.
+Wilderness Almanac uses JavaScript ES modules, Vite and pinned Three.js 0.160.1.
+The DOM UI stays framework-free; campaign maps use React 19.3.1 and React Three
+Fiber 9.8.2 for retained chunk ownership. Generation and campaign data are
+independent of the DOM and Three.js.
 IndexedDB stores browser campaigns; an optional Node/SQLite API stores explicit
 account copies. See [project state](PROJECT_STATE.md), [repository instructions](../AGENTS.md),
 and the [user guide](USER_GUIDE.md).
@@ -12,19 +14,20 @@ Use Node.js 24 or later. Install frontend dependencies with `npm ci`; start Vite
 with `npm run dev`. The browser-only app needs no environment variables. Backend
 work additionally needs `npm ci --prefix server`; see [self-hosting](SELF_HOSTING.md).
 
-| Command                  | Purpose                                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------------------- |
-| `npm run lint`           | ESLint correctness and unused-variable checks across application, backend, tests and tooling |
-| `npm run format:check`   | Check Prettier formatting                                                                    |
-| `npm test`               | Frontend Node tests                                                                          |
-| `npm run test:server`    | Backend auth, SQLite, proxy and backup tests                                                 |
-| `npm run build`          | Build application and website map embeds                                                     |
-| `npm run preview`        | Serve the production build                                                                   |
-| `npm run test:e2e`       | Production-build desktop and mobile browser tests; build first                               |
-| `npm run test:account`   | Source-served account dialog tests with mocked HTTP                                          |
-| `npm run test:storage`   | Source-served real IndexedDB tests                                                           |
-| `npm run test:workspace` | Source-served journal pagination, panel and workspace checks                                 |
-| `npm run check`          | Frontend lint, formatting, Node tests, build and desktop/mobile browser tests                |
+| Command                         | Purpose                                                                                      |
+| ------------------------------- | -------------------------------------------------------------------------------------------- |
+| `npm run lint`                  | ESLint correctness and unused-variable checks across application, backend, tests and tooling |
+| `npm run typecheck:incremental` | Scoped JSDoc/`@ts-check` verification for the incremental renderer and its integration tests |
+| `npm run format:check`          | Check Prettier formatting                                                                    |
+| `npm test`                      | Frontend Node tests                                                                          |
+| `npm run test:server`           | Backend auth, SQLite, proxy and backup tests                                                 |
+| `npm run build`                 | Build application and website map embeds                                                     |
+| `npm run preview`               | Serve the production build                                                                   |
+| `npm run test:e2e`              | Production-build desktop and mobile browser tests; build first                               |
+| `npm run test:account`          | Source-served account dialog tests with mocked HTTP                                          |
+| `npm run test:storage`          | Source-served real IndexedDB tests                                                           |
+| `npm run test:workspace`        | Source-served journal pagination, panel and workspace checks                                 |
+| `npm run check`                 | Frontend lint, formatting, Node tests, build and desktop/mobile browser tests                |
 
 Install browser binaries with `npx playwright install chromium`. For a focused
 Node check use `node --test tests/NAME.test.js`; for a browser subset pass a spec
@@ -64,7 +67,12 @@ Keep Three.js behind the lazy `src/ui/map-view.js` entry. The menu and Inspector
 share a still-preview renderer; do not introduce per-hex WebGL contexts. Mesh
 builders stay independent of browser lifecycle. `prop-batches.js` writes component
 transforms, index expansion and packed foliage directly into final batch buffers;
-source arrays stay unchanged and component geometries are disposed once.
+source arrays stay unchanged and component geometries are disposed once. Packing
+also accumulates bounds from the final Float32 positions and computes the exact
+bounding sphere with one radius pass. Pixel crown/dressing templates share read-only
+typed arrays, not geometries or attributes; far crowns feed those arrays directly
+to the batch writer. Transform meshes or owned output buffers, never template-backed
+geometry in place.
 Scene, controls, geometry, materials, textures, preview jobs and listeners each have
 explicit disposal owners.
 
@@ -72,6 +80,25 @@ explicit disposal owners.
 `generateDressing(world, variant)` creates cosmetic descriptors; `prepareMap(world,
 dressing)` creates numeric renderer data. `campaignWorld` and `campaignDressing`
 resolve edits and locks over the generated base. Use named random streams.
+
+`prepareMap` remains eager by default. Campaigns opt into `deferRiverSurfaces`:
+river/mouth tiles carry plain, cloneable descriptors with owned numeric inputs.
+`generation/river-surface-cache.js` resolves the exact triangulation once per
+descriptor through a WeakMap. Shallow source/fog copies share it; undiscovered
+fog tiles omit it. Terrain, ground/beam lighting, selection rings and party height
+resolve surfaces when needed, including required neighbouring surfaces. Snapshots
+flush all queued chunks. This moves work, not geometry detail: shared boundaries,
+triangle order, bevels and clipped water remain unchanged. River triangulation
+reuses sector lattice samples and skips island-bank comparisons for empty island
+fields; it retains the cross-sector lookup and first-encounter ordering.
+
+Mountain preparation uses a weak world/dressing identity cache guarded by value
+snapshots of every consumed topology, shape and revision input. Dressing placement,
+locked-prop adjustment and map preparation reuse the numeric work, while every
+caller receives independent mutable maps and arrays. In-place input edits invalidate
+the cache; custom ridge closures bypass it. Nothing is added to saved dressing.
+When adding mountain inputs or output fields, update both the signature and copying
+logic and retain uncached-output/mutation tests.
 
 Only generator **10** is supported. The number remains explicit in campaigns and
 shared URLs; unsupported versions are rejected. Refactors must preserve current
@@ -83,6 +110,127 @@ The session owns campaign actions, selection and at most 20 Undo states. Derive 
 validate complete edits before one commit/save; multi-edit remains atomic. Failed
 persistence keeps live edits and history available for retry/download. Palette
 changes survive hex Undo; navigation guards unsaved form drafts.
+
+## Campaign entry
+
+Campaign entry commits the workspace loading shell before importing the renderer
+or generating the world. The shell restores panel sizing and the campaign title,
+conceals retained canvas/details without collapsing their boxes, and paints before
+synchronous preparation starts. A static inline SVG hex grid fills the map box;
+CSS supplies its theme color and the status label remains available to screen
+readers. It needs neither renderer imports nor WebGL, and the shell restores its
+markup on retry if a WebGL error replaced it with a message. The grid uses the
+initial camera projection and horizontal span from `map-framing.js`, rather than
+an arbitrary hex size. Projection tests keep the static SVG in sync with the
+camera constants on desktop and mobile. After that paint opportunity, renderer loading and
+pure `prepareCampaignMap` data preparation start together, so module fetching can
+overlap main-thread generation. This is not worker execution or speculative
+prewarming. `prepareCampaignEntry` observes both failures; `session.openPrepared`
+commits/saves only after both succeed and the entry remains active. Synchronous
+`session.open` uses the same commit path. New replay links reuse the base world
+already generated for their campaign record. Only one view participates in layout. Navigation
+remains queued; failed imports or WebGL setup return to the menu with controls
+restored. The shell ends after `setMap` schedules rendering, not after all chunks
+finish. Direct campaign URLs suppress the library before the app module starts
+and open the shell before storage initialization; startup does not render library
+cards or animate from the library. Invalid routes/replays and failed loads restore
+the library. New-campaign creation retains its separate preview/loading flow.
+
+`ui/deferred-map-work.js` schedules optional campaign previews only while the
+workspace is visible, its loading shell is gone, and the main canvas is `ready`.
+A mutation observer opens/closes this gate; there is no loading-time polling.
+The keyed queue runs one synchronous job per idle opportunity, replaces stale
+Inspector/party requests, and gates each gallery tile. Cancellation settles
+waiting callers; entry, Back and disposal clear pending work. Existing images
+are reused only for matching inputs; otherwise the party button keeps its SVG
+fallback and stale Inspector images stay hidden. Preview rendering APIs remain
+synchronous for creation, embeds and callers outside campaign scheduling.
+
+## Incremental campaign rendering
+
+`src/ui/map-view.js` exposes `createCampaignMapRenderer` for the campaign and the
+synchronous `createMapRenderer` for creation previews. Inspector thumbnails, party
+previews and website embeds retain the synchronous renderer. React/Fiber stay
+behind this lazy entry; there is one WebGL context per renderer, not one per chunk.
+
+Fog toggles apply directly after the unsaved-edit guard, without the two-frame
+feedback wait in `mapAction.run`. Missing chunks are scheduled by the renderer;
+cache hits and restrictive concealment apply in the same task. Keep the paint
+opportunity for heavy synchronous actions such as regeneration. Browser checks
+assert switch and renderer state immediately after dispatch, before yielding.
+
+`incremental-builds.js` owns axial 4×4 chunks, with a source and latest fog record
+per chunk. New geometry is built outside React in roughly 8 ms RAF slices (one
+chunk can exceed that budget). Fog signatures include neighboring visibility for
+river banks, shorelines and shared edges. Restrictive updates detach stale chunks
+and picking targets synchronously; newer requests cancel queued work. Source or
+art-style changes release both caches. Explicit snapshots flush pending work.
+Before each slice, camera matrices refresh and pending chunks are scored once
+against conservative projected footprint/height bounds. Viewport intersections
+rank first, then distance to the centre, with deterministic chunk-ID ties. This
+follows initial party focus and subsequent pan/zoom; it is scheduling, not culling.
+All chunks still build, including offscreen shadow/light dependencies.
+
+`retained-chunk-scene.js` mounts memoized chunk primitives through an R3F portal.
+Primitives use record-identity keys so an outgoing fog record can remain mounted
+under its arriving replacement. The build cache owns geometry disposal; React owns attachments. The existing
+renderer still owns controls, camera framing, ambient motion, shadows and the party
+overlay. `incremental-map-builds.js` supplies complete projected cell metadata
+immediately, caches pickers per chunk, and updates feature lights during partial
+reveals using the full target layout for clipping. Partial commits refresh picking
+without cancelling gestures or changing camera framing. The canvas exposes
+`data-renderer="fiber-retained"`, `data-render-state` and `aria-busy` for inspection.
+The state distinguishes geometry `building`, presentation `settling`, and `ready`.
+
+`chunk-transitions.js` reveals individual hexes with a 120 ms quartic ease-out rise
+and fade, starting about six CSS pixels below their resting position. Geometry and
+4×4 batches remain intact. Within each ready chunk, the closest hexes start first,
+8 ms apart: at most 120 ms of stagger, not a whole-map queue. Cached reveals replay
+the same motion without rebuilding geometry; concealment stays instantaneous.
+Movement off and reduced motion skip arrivals, and disabling motion settles an
+active arrival on the next frame. Each new arrival anchors its clock after the
+first frame's render submission, so initial shader/setup cost does not consume
+its rise. Subsequent frames advance by at most 32 ms of animation time, so a
+long chunk build stretches the arrival instead of skipping its intermediate
+positions. The nominal duration remains 120 ms per hex, but elapsed wall time
+can be longer under load. This is a CPU submission boundary, not a guarantee
+of GPU completion or smooth frames under load.
+
+Batched geometry retains one byte per vertex for stable hex ownership. Per-hex
+delay uniforms drive color, rise and depth shaders; no per-hex draw calls or
+per-frame vertex uploads are added. Temporary materials restore after arrival,
+but their compiled programs remain cached with the build record for warm replay.
+Record release disposes those wrappers. Wind/wave hooks and original geometry
+buffers remain intact. Per-mesh bounding spheres cover the shader displacement;
+picking follows each hex's offset and skips hexes that have not appeared yet.
+Light meshes retain source-hex ranges and native light intensity follows the fade.
+The existing render loop drives arrivals and refreshes shadows.
+
+A previous, no-more-revealing cached record can remain underneath the arrival.
+Its temporary shader biases depth behind incoming geometry and removes each hex
+as its replacement finishes. Underlays never participate in picking, and detach
+immediately on concealment; retiring one settles its arrival before release.
+Palette/lighting changes settle active arrivals first. Snapshots flush both queued
+geometry and transitions, restoring original materials and bounds.
+
+The standalone comparison tool has its own pinned dependencies and compares
+monolithic, native incremental, declarative Fiber and retained Fiber modes:
+
+```sh
+npm ci --prefix tools/incremental-renderer
+npm run check --prefix tools/incremental-renderer
+npm run build --prefix tools/incremental-renderer
+npm run preview --prefix tools/incremental-renderer  # http://127.0.0.1:4187
+# In another terminal; Chrome must be installed:
+SIZES=4 ROUNDS=3 WARMUPS=1 npm run compare --prefix tools/incremental-renderer
+```
+
+Set `CHROME_EXECUTABLE` for a specific Chrome binary. `VERIFY=1 ROUNDS=1` captures
+verification images separately from timing runs. Results go to ignored
+`test-results/incremental-renderer/`. The tool does not exercise campaign controls
+or the integrated lighting/picking adapter; use the application and
+`e2e/incremental-renderer.spec.js` for that boundary. Detailed measurements and
+trade-offs belong in the PR description, not a separate performance document.
 
 ## Focused references
 
@@ -100,10 +248,16 @@ custom-preference and seven-hex worlds. `tests/fixtures/rendering.json` records
 version-10 Low poly mesh buffers, materials, transforms and picking metadata.
 These baselines were captured before removing historical generators. Do not
 regenerate fixtures merely to hide failures. Preserve distinct Pixelart checks.
+`tests/fixtures/river-surfaces-v10.json` records baseline numeric surface digests,
+including signed zero and ordering, for generated, edited and locked river replay.
 
 Browser fixtures seed current IndexedDB records directly through `e2e/data.js`.
 They do not depend on localStorage campaign migration. The journal pagination component check imports source modules and runs through `test:workspace`, separately from production-build tests. Simulated failures stay in
-test setup and browser contexts are isolated.
+test setup and browser contexts are isolated. Campaign preview scheduling is
+covered by `e2e/deferred-previews.spec.js` in the source-served workspace suite.
+`e2e/campaign-preparation.spec.js` holds the renderer import to verify concurrent
+preparation, failed-import persistence isolation and retry. Both use asserted
+test-only instrumentation and are excluded from production-bundle suites.
 
 `node tools/render-default-icon.mjs /tmp/default-icon.svg` renders the bundled
 fallback from shared mesh builders without WebGL; rasterize at 384px with

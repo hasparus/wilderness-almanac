@@ -166,6 +166,29 @@ or backend requests. The 22 card images are by YY Game and retain their
 
 Fog derives visited, visible-unvisited and undiscovered presentation from saved
 visits; structural editing requires fog off. See [fog rules](FOG_OF_WAR.md).
+Campaign maps render incrementally through retained React Three Fiber chunks;
+creation previews, thumbnails and embeds keep the synchronous renderer. Fog
+concealment and stale-work cancellation are immediate, while uncached reveals
+arrive over multiple frames. Each hex independently rises and fades on a nominal
+120 ms timeline, with a short stagger inside each unchanged 4×4 batch. Long
+main-thread stalls stretch the timeline rather than skip the rise. Cached reveals replay without
+rebuilding; restrictive updates stay instant. Movement off and reduced motion
+skip arrivals. Campaign entry shows its sized loading workspace with a static
+hex grid matching the initial map projection before renderer loading or generation,
+rather than preparing it behind the campaigns list.
+Renderer loading starts alongside pure campaign preparation after the shell can
+paint; only successful, active entry commits the prepared session. Mountain
+surfaces are reused across dressing and presentation with mutation-safe numeric
+snapshots and independent returned buffers.
+Campaign river/mouth triangulation is deferred until a geometry, lighting,
+selection or party consumer needs it, with exact numeric results cached across
+source/fog copies. Other `prepareMap` callers remain eager. Pending chunks follow
+the current viewport each slice without culling offscreen dependencies. Optional
+party, Inspector and gallery previews wait for the visible map to settle and run
+one at a time; cancellation prevents stale queued work from crossing navigation.
+Chunking favors early progress and localized visits, not minimum draw calls or
+the shortest full-map reveal. See the
+[renderer ownership contract](DEVELOPMENT.md#incremental-campaign-rendering).
 The UI theme is independent of map palette and lighting. Appearance choices stage
 until Save, except immediate map regeneration. See [design system](DESIGN_SYSTEM.md).
 Low poly remains the default; Pixelart carries a resource warning and shares the

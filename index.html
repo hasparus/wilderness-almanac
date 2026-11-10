@@ -11,11 +11,18 @@
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#0f2024" data-dark="#0f2024" data-light="#f1e8db" />
     <script>
+      // @ts-check
+      const campaignEntry =
+        /\/campaign\/[^/]+\/?$/.test(location.pathname) ||
+        new URLSearchParams(location.search).has('seed');
+      document.documentElement.toggleAttribute('data-campaign-entry', campaignEntry);
       try {
         const theme = localStorage.getItem('wilderness-theme') === 'light' ? 'light' : 'dark';
         document.documentElement.dataset.theme = theme;
-        const meta = document.querySelector('meta[name="theme-color"]');
-        meta.content = meta.dataset[theme];
+        const meta = /** @type {HTMLMetaElement | null} */ (
+          document.querySelector('meta[name="theme-color"]')
+        );
+        if (meta) meta.content = meta.dataset[theme] ?? '';
       } catch {
         /* Dark remains available when browser storage is restricted. */
       }
@@ -71,6 +78,9 @@
       }
       [hidden] {
         display: none !important;
+      }
+      html[data-campaign-entry] #campaign-menu {
+        visibility: hidden;
       }
     </style>
     <link rel="preload" href="/fonts/geist-sans.woff2" as="font" type="font/woff2" crossorigin />
@@ -897,7 +907,33 @@
         </header>
         <div class="hp-map-stage">
           <div class="hp-scene" id="hp-scene">
-            <div class="hp-fallback" id="hp-loading">Preparing the landscape…</div>
+            <div class="hp-fallback" id="hp-loading" role="status">
+              <!-- Projection mirrors map-framing.js; map-framing.test.js guards it.
+                   The shallow viewBox fits the width; the pattern fills the whole viewport. -->
+              <svg
+                class="hp-map-skeleton"
+                viewBox="-7.5 -0.5 15 1"
+                preserveAspectRatio="xMidYMid meet"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <defs>
+                  <pattern
+                    id="loading-hexes"
+                    width="1.7320508076"
+                    height="3"
+                    patternUnits="userSpaceOnUse"
+                    patternTransform="matrix(0.838961287 0.3039751427 -0.5441911051 0.468628345 0 0)"
+                  >
+                    <path
+                      d="M0 1 .8660254038 .5V-.5 M.8660254038 .5 1.7320508076 1V2L.8660254038 2.5 0 2V1 M.8660254038 2.5V3.5"
+                    />
+                  </pattern>
+                </defs>
+                <rect x="-1000" y="-1000" width="2000" height="2000" fill="url(#loading-hexes)" />
+              </svg>
+              <span class="sr-only">Loading campaign map…</span>
+            </div>
           </div>
           <span class="hp-zooms" role="group" aria-label="Map zoom">
             <button

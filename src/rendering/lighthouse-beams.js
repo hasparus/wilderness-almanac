@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { resolveRiverSurface } from '../generation/river-surface-cache.js';
 import { worldPosition } from '../generation/hex.js';
 
 export const BEAM_LENGTH = 2 * Math.sqrt(3);
@@ -140,7 +141,7 @@ export function createWaterLanding(
     const { wx, wz } = worldPosition(cell);
     if (Math.hypot(wx - position.x, wz - position.z) > (BEAM_LENGTH + LANDING_RADIUS) * scale + 1)
       continue;
-    const water = cell.riverSurface?.water;
+    const water = resolveRiverSurface(cell.riverSurface)?.water;
     if (water) {
       for (const face of water.triangles)
         for (const index of face) {

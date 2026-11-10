@@ -1,9 +1,16 @@
+// @ts-check
 import * as THREE from 'three';
+import { MAP_CAMERA_POSITION, MAP_LOOK_AT_HEIGHT } from '../map-framing.js';
+import { resolveRiverSurface } from '../generation/river-surface-cache.js';
 import { geometryFrom } from './geometry.js';
 import { surfaceHeight } from '../generation/math.js';
 import { fitPreviewCamera } from './preview-framing.js';
 import { createMapPicker } from './map-picking.js';
 
+/**
+ * Own camera navigation, selection rings and pointer lifetimes for a shared cell list.
+ * @param {import('./map-renderer-types.js').ControlsOptions} options
+ */
 export function createMapControls({
   host,
   renderer,
@@ -21,14 +28,22 @@ export function createMapControls({
   picker = () => createMapPicker([map]),
 }) {
   const listeners = new AbortController();
+  /**
+   * @template {keyof HTMLElementEventMap} K
+   * @param {HTMLElement} target
+   * @param {K} event
+   * @param {(event: HTMLElementEventMap[K]) => void} handler
+   * @param {AddEventListenerOptions} [options]
+   */
   const listen = (target, event, handler, options = {}) =>
     target.addEventListener(event, handler, { ...options, signal: listeners.signal });
   const camera = new THREE.OrthographicCamera(-8, 8, 6, -6, 0.1, 180);
-  camera.position.set(24, 30, 37);
-  camera.lookAt(0, 0.3, 0);
+  camera.position.set(...MAP_CAMERA_POSITION);
+  camera.lookAt(0, MAP_LOOK_AT_HEIGHT, 0);
+  /** @param {import('./map-renderer-types.js').ControlCell} cell */
   function ringGeometry(cell) {
     const points = [],
-      surface = cell.surface || cell.riverSurface,
+      surface = cell.surface || resolveRiverSurface(cell.riverSurface),
       mountain = !!surface,
       n = cell.riverSurface ? 28 : mountain ? 8 : 1;
     const corners =
@@ -38,6 +53,7 @@ export function createMapControls({
         Math.sin((k * Math.PI) / 3),
         Math.cos((k * Math.PI) / 3),
       ]);
+    /** @param {number} k @param {number} t @param {number} factor */
     function point(k, t, factor) {
       const a = corners[k],
         b = corners[(k + 1) % 6],
@@ -59,15 +75,19 @@ export function createMapControls({
     hoverRing = new THREE.Mesh(new THREE.BufferGeometry(), materials.hover);
   scene.add(activeRing, hoverRing);
   hoverRing.visible = false;
+  /** @param {THREE.Mesh} ring @param {import('./map-renderer-types.js').ControlCell} cell */
   function setRing(ring, cell) {
     ring.geometry.dispose();
     ring.geometry = ringGeometry(cell);
     ring.position.set(cell.g.position.x, 0, cell.g.position.z);
   }
-  let selected = null,
-    selectionKeys = null,
-    hovered = null,
-    zoom = 1,
+  /** @type {string | null} */
+  let selected = null;
+  /** @type {string[] | null} */
+  let selectionKeys = null;
+  /** @type {string | null} */
+  let hovered = null;
+  let zoom = 1,
     fitContent = false;
   function showSelection() {
     if (selectionKeys === null) {
@@ -94,6 +114,7 @@ export function createMapControls({
     activeRing.position.set(0, 0, 0);
     activeRing.visible = points.length > 0;
   }
+  /** @param {string} key @param {import('./map-renderer-types.js').SelectionOptions} [options] */
   function choose(key, { notify = true, additive = false, fromMap = false } = {}) {
     cancelTap();
     cancelHover();
@@ -151,6 +172,7 @@ export function createMapControls({
     camera.updateProjectionMatrix();
     draw();
   }
+  /** @param {number} factor */
   function changeZoom(factor) {
     if (!navigation) return false;
     zoom = Math.min(12, Math.max(0.7, zoom * factor));
@@ -158,6 +180,7 @@ export function createMapControls({
     camera.updateProjectionMatrix();
     draw();
   }
+  /** @param {number} horizontal @param {number} vertical */
   function pan(horizontal, vertical) {
     if (!navigation) return false;
     cancelHover();
@@ -178,6 +201,7 @@ export function createMapControls({
     draw();
     return true;
   }
+  /** @param {string} key @param {{hexesWide?: number}} [options] */
   function focus(key, { hexesWide } = {}) {
     if (!navigation) return false;
     cancelHover();
@@ -208,6 +232,7 @@ export function createMapControls({
   const raycaster = new THREE.Raycaster(),
     mouse = new THREE.Vector2();
   let pick = picker();
+  /** @param {number} x @param {number} y @returns {string | null} */
   function hit(x, y) {
     const rect = host.getBoundingClientRect();
     mouse.set(((x - rect.left) / rect.width) * 2 - 1, (-(y - rect.top) / rect.height) * 2 + 1);
@@ -215,17 +240,21 @@ export function createMapControls({
     raycaster.setFromCamera(mouse, camera);
     const intersection = pick(raycaster);
     if (!intersection) return null;
-    const ranges = intersection.object.userData.faceRanges;
-    if (!ranges) return intersection.object.userData.key;
+    const metadata = /** @type {{key: string, faceRanges?: {end: number, key: string}[]}} */ (
+      intersection.object.userData
+    );
+    const ranges = metadata.faceRanges;
+    if (!ranges) return metadata.key;
     let low = 0,
       high = ranges.length - 1;
     while (low < high) {
       const mid = (low + high) >> 1;
-      if (intersection.faceIndex < ranges[mid].end) high = mid;
+      if (/** @type {number} */ (intersection.faceIndex) < ranges[mid].end) high = mid;
       else low = mid + 1;
     }
     return ranges[low].key;
   }
+  /** @type {import('./map-renderer-types.js').PointerPosition | undefined} */
   let pendingHover;
   function cancelHover() {
     pendingHover = undefined;
@@ -242,28 +271,38 @@ export function createMapControls({
     if (hoverRing.visible)
       setRing(
         hoverRing,
-        cells.find((cell) => cell.key === key),
+        /** @type {import('./map-renderer-types.js').ControlCell} */ (
+          cells.find((cell) => cell.key === key)
+        ),
       );
     return true;
   }
+  /** @type {Map<number, import('./map-renderer-types.js').PointerPosition>} */
   const pointers = new Map();
+  /** @type {number | null} */
   let partyPointer = null;
-  let longPressTimer,
-    longPressed = false,
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let longPressTimer;
+  let longPressed = false,
     gestureMoved = false;
   function cancelLongPress() {
     clearTimeout(longPressTimer);
     longPressTimer = undefined;
   }
-  let last = null,
-    start = null,
-    lastTap = null,
-    slideZoom = false,
+  /** @type {import('./map-renderer-types.js').PointerPosition | null} */
+  let last = null;
+  /** @type {import('./map-renderer-types.js').Tap | null} */
+  let start = null;
+  /** @type {import('./map-renderer-types.js').Tap | null} */
+  let lastTap = null;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let tapTimer;
+  /** @type {(() => void) | undefined} */
+  let tapAction;
+  let slideZoom = false,
     slideTapSelected = false,
     pinched = false,
     pinchDistance = 0,
-    tapTimer,
-    tapAction,
     interactionRevision = 0;
   function cancelTap() {
     clearTimeout(tapTimer);
@@ -286,14 +325,15 @@ export function createMapControls({
       lastTap &&
       e.timeStamp - lastTap.time <= 300 &&
       Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 24;
-    const secondTapSelected = secondTap && lastTap.selected;
+    const secondTapSelected =
+      secondTap && /** @type {import('./map-renderer-types.js').Tap} */ (lastTap).selected;
     const revision = interactionRevision;
     if (secondTap) cancelTap();
     else flushTap();
     if (revision !== interactionRevision || listeners.signal.aborted) return;
     lastTap = null;
     if (partyPointer !== null) {
-      party.cancel();
+      /** @type {import('./map-renderer-types.js').PartyController} */ (party).cancel();
       partyPointer = null;
       return;
     }
@@ -339,7 +379,7 @@ export function createMapControls({
     if (!navigation) return;
     if (partyPointer === e.pointerId) {
       if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) >= 3) gestureMoved = true;
-      party.move(e, camera);
+      /** @type {import('./map-renderer-types.js').PartyController} */ (party).move(e, camera);
       return;
     }
     if (pointers.has(e.pointerId)) {
@@ -380,6 +420,7 @@ export function createMapControls({
       requestHover();
     }
   });
+  /** @param {PointerEvent} e */
   function release(e) {
     if (!navigation) return;
     cancelLongPress();
@@ -394,7 +435,7 @@ export function createMapControls({
       )
         lastTap = { x: e.clientX, y: e.clientY, time: e.timeStamp };
       start = null;
-      party.end(e, hit);
+      /** @type {import('./map-renderer-types.js').PartyController} */ (party).end(e, hit);
       return;
     }
     const wasLast = pointers.size === 1;
@@ -443,7 +484,7 @@ export function createMapControls({
     if (partyPointer === e.pointerId) {
       partyPointer = null;
       start = null;
-      party.cancel();
+      /** @type {import('./map-renderer-types.js').PartyController} */ (party).cancel();
       return;
     }
     pointers.delete(e.pointerId);
@@ -474,6 +515,7 @@ export function createMapControls({
       { passive: false },
     );
   if (!navigation) {
+    /** @type {(import('./map-renderer-types.js').PointerPosition & {id: number, moved: boolean}) | null} */
     let press = null;
     listen(host, 'pointerdown', (event) => {
       if (event.button !== 0) return;
@@ -505,6 +547,17 @@ export function createMapControls({
     updateHover,
     setFrameInsets,
     isInteracting: () => pointers.size > 0 || partyPointer !== null,
+    /** Refresh displayed hit targets without cancelling an active drag or reframing. @returns {void} */
+    refreshPicking() {
+      hovered = null;
+      hoverRing.visible = false;
+      onHover(null);
+      map.updateWorldMatrix(true, true);
+      pick = picker();
+      showSelection();
+      requestHover();
+    },
+    /** @param {import('./map-renderer-types.js').RefreshOptions} [options] */
     refresh({ resetView = false, fitContent: fit = false, preserveFraming = false } = {}) {
       cancelHover();
       map.updateWorldMatrix(true, true);
@@ -542,6 +595,7 @@ export function createMapControls({
     },
     select: choose,
     focus,
+    /** @param {Iterable<string> | null} keys */
     setSelection(keys) {
       selectionKeys = keys === null ? null : [...keys];
       showSelection();
