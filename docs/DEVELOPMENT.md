@@ -180,8 +180,10 @@ All chunks still build, including offscreen shadow/light dependencies.
 `retained-chunk-scene.js` mounts memoized chunk primitives through an R3F portal.
 Primitives use record-identity keys so an outgoing fog record can remain mounted
 under its arriving replacement. The build cache owns geometry disposal; React owns attachments. The existing
-renderer still owns controls, camera framing, ambient motion, shadows and the party
-overlay. `incremental-map-builds.js` supplies complete projected cell metadata
+renderer still owns controls, camera framing, canvas size, ambient motion, shadows
+and the party overlay. Fiber is configured with sizing disabled, because its
+fixed pixel canvas styles would stretch the image after a layout change and move
+hover, selection and party drags away from the pointer. `incremental-map-builds.js` supplies complete projected cell metadata
 immediately, caches pickers per chunk, and updates feature lights during partial
 reveals using the full target layout for clipping. Partial commits refresh picking
 without cancelling gestures or changing camera framing. The canvas exposes

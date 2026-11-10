@@ -177,3 +177,29 @@ for (const artStyle of ['low-poly', 'pixelart']) {
     await expect(page.getByRole('button', { name: 'Find party', exact: true })).toBeEnabled();
   });
 }
+
+test('the retained canvas follows the map area after a resize so picking stays aligned', async ({
+  page,
+}) => {
+  await openCampaign(page, { expandInspector: false });
+  const canvas = page.getByRole('img', { name: /^Interactive isometric hex map\./ });
+  await expect(canvas).toHaveAttribute('data-renderer', 'fiber-retained');
+  await expect(canvas).toHaveAttribute('data-render-state', 'ready');
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error('Missing viewport');
+  await page.setViewportSize({ width: viewport.width - 120, height: viewport.height - 120 });
+  const sizes = () =>
+    canvas.evaluate((element) => {
+      const host = /** @type {HTMLElement} */ (element.parentElement);
+      return {
+        canvas: [element.clientWidth, element.clientHeight],
+        host: [host.clientWidth, host.clientHeight],
+      };
+    });
+  await expect
+    .poll(async () => {
+      const { canvas, host } = await sizes();
+      return canvas.join('x') === host.join('x');
+    })
+    .toBe(true);
+});

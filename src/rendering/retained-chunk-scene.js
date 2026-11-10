@@ -47,28 +47,34 @@ export function createRetainedChunkScene({ renderer, scene, camera, container, d
       ),
     );
   }
-  const initialized = root
-    .configure({
-      gl: renderer,
-      scene,
-      camera,
-      frameloop: 'never',
-      flat: true,
-      dpr: renderer.getPixelRatio(),
-      shadows: { enabled: true, type: renderer.shadowMap.type },
-      size: {
-        width: renderer.domElement.clientWidth || 1,
-        height: renderer.domElement.clientHeight || 1,
-        top: 0,
-        left: 0,
-      },
-    })
-    .then(() => {
-      if (disposed) return;
-      ready = true;
-      render();
-      draw();
-    });
+  // Map controls own the canvas size. Fiber would write fixed pixel styles over
+  // the CSS 100% size, so later layout changes stretch the image away from the
+  // pointer and picking misses. With a renderer instance, configure applies
+  // synchronously, so the guard only needs to cover this call.
+  const setSize = renderer.setSize;
+  renderer.setSize = () => renderer;
+  const configured = root.configure({
+    gl: renderer,
+    scene,
+    camera,
+    frameloop: 'never',
+    flat: true,
+    dpr: renderer.getPixelRatio(),
+    shadows: { enabled: true, type: renderer.shadowMap.type },
+    size: {
+      width: renderer.domElement.clientWidth || 1,
+      height: renderer.domElement.clientHeight || 1,
+      top: 0,
+      left: 0,
+    },
+  });
+  renderer.setSize = setSize;
+  const initialized = configured.then(() => {
+    if (disposed) return;
+    ready = true;
+    render();
+    draw();
+  });
 
   return {
     initialized,
