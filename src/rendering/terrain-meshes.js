@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { resolveRiverSurface } from '../generation/river-surface-cache.js';
 import { addMesh, geometryFrom } from './geometry.js';
+import { riverCliffNormals } from './river-cliff-normals.js';
 import { surfaceHeight, TOP_RADIUS } from '../generation/math.js';
 import { pixelUV } from './pixel-model-geometry.js';
 import {
@@ -231,16 +232,7 @@ export function createTerrainBuilder({
       terrainMaterial('water'),
     );
     waterMesh.castShadow = false;
-    function normal(p) {
-      const x = data.wx + p[0],
-        z = data.wz + p[2],
-        e = 0.002,
-        dx = riverLandValue(data.river, x + e, z) - riverLandValue(data.river, x - e, z),
-        dz = riverLandValue(data.river, x, z + e) - riverLandValue(data.river, x, z - e),
-        length = Math.hypot(dx, dz) || 1;
-      return [-dx / length, 0, -dz / length];
-    }
-    function wall(a, b, na = normal(a), nb = normal(b)) {
+    function wall(a, b, na, nb) {
       if ((b[2] - a[2]) * na[0] - (b[0] - a[0]) * na[2] < 0) {
         [a, b] = [b, a];
         [na, nb] = [nb, na];
@@ -250,7 +242,7 @@ export function createTerrainBuilder({
       cliffs.push(...a, ...b, ...c, ...b, ...d, ...c);
       normals.push(...na, ...nb, ...na, ...nb, ...nb, ...na);
     }
-    for (const [a, b] of surface.shore) wall(a, b);
+    for (const [a, b] of surface.shore) wall(a, b, ...riverCliffNormals(data, a, b));
     // At the map edge, close exposed land. At neighbouring land, only close a
     // water-reaching section; otherwise the matching bank and land form one top.
     for (let k = 0; k < 6; k++)

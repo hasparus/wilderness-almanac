@@ -114,11 +114,17 @@ changes survive hex Undo; navigation guards unsaved form drafts.
 ## Campaign entry
 
 Campaign entry commits the workspace loading shell before importing the renderer
-or generating the world. The shell restores panel sizing and the campaign title,
+or generating the world. The shell applies the incoming campaign's palette before
+painting, then restores panel sizing and the campaign title,
 conceals retained canvas/details without collapsing their boxes, and paints before
 synchronous preparation starts. A static inline SVG hex grid fills the map box;
 CSS supplies its theme color and the status label remains available to screen
-readers. It needs neither renderer imports nor WebGL, and the shell restores its
+readers. The map has three layers: its CSS background, the SVG grid, and a
+permanently transparent WebGL canvas. Arriving terrain covers the grid; the
+renderer hides the remaining grid after drawing the settled map. No opacity
+mode switch or additional observer is needed. The CSS background matches the
+campaign's palette, lighting and UI scheme before the renderer loads; UI and
+renderer share the numeric night tint. It needs neither renderer imports nor WebGL, and the shell restores its
 markup on retry if a WebGL error replaced it with a message. The grid uses the
 initial camera projection and horizontal span from `map-framing.js`, rather than
 an arbitrary hex size. Projection tests keep the static SVG in sync with the
@@ -181,6 +187,11 @@ reveals using the full target layout for clipping. Partial commits refresh picki
 without cancelling gestures or changing camera framing. The canvas exposes
 `data-renderer="fiber-retained"`, `data-render-state` and `aria-busy` for inspection.
 The state distinguishes geometry `building`, presentation `settling`, and `ready`.
+Campaign snapshots composite the background and transparent canvas into a separate
+2D canvas, keeping PNGs opaque without modifying the live scene. Explicitly
+transparent preview snapshots remain transparent. Browser compositing can round
+antialiased edge channels differently from the former opaque WebGL background;
+compare decoded pixels rather than assuming byte-identical PNGs across those paths.
 
 `chunk-transitions.js` reveals individual hexes with a 120 ms quartic ease-out rise
 and fade, starting about six CSS pixels below their resting position. Geometry and
@@ -244,10 +255,21 @@ trade-offs belong in the PR description, not a separate performance document.
 ## Fixtures and maintenance tools
 
 `tests/fixtures/generation-v10.json` records world/dressing hashes for ordinary,
-custom-preference and seven-hex worlds. `tests/fixtures/rendering.json` records
-version-10 Low poly mesh buffers, materials, transforms and picking metadata.
-These baselines were captured before removing historical generators. Do not
-regenerate fixtures merely to hide failures. Preserve distinct Pixelart checks.
+custom-preference and seven-hex worlds. World hashes remain exact. Dressing
+fingerprints round numbers to 12 decimal places in test serialization only:
+ARM64/x64 native math differs by up to `2.22e-16` in the captured cases. The portable
+fingerprints were derived from commit `1a35236` after verifying its original exact
+x64 hashes; generation and saved data are not rounded. Nonfinite dressing numbers
+fail rather than silently becoming JSON `null`.
+
+`tests/fixtures/rendering.json` records version-10 Low poly mesh buffers, materials,
+transforms and picking metadata. Normal buffers must be finite. At river-mouth
+support boundaries, field differences can include `-Infinity`; the renderer uses
+an outward geometric wall normal there and preserves finite field normals. The
+reviewed fixture correction affects 25 wall segments across five mouth meshes,
+including their winding where necessary. Wall corners, counts, materials and
+picking are unchanged; corrected buffers match byte-for-byte on ARM64 and x64.
+Do not regenerate fixtures merely to hide failures. Preserve distinct Pixelart checks.
 `tests/fixtures/river-surfaces-v10.json` records baseline numeric surface digests,
 including signed zero and ordering, for generated, edited and locked river replay.
 

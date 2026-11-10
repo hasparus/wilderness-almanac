@@ -32,6 +32,8 @@ function meshDigest(group) {
     ]);
     for (const name of Object.keys(geometry.attributes).sort()) {
       const attr = geometry.attributes[name];
+      if (name === 'normal')
+        assert.ok(attr.array.every(Number.isFinite), 'rendered normals must be finite');
       json([name, attr.itemSize, attr.normalized, attr.array.constructor.name]);
       hash.update(Buffer.from(attr.array.buffer, attr.array.byteOffset, attr.array.byteLength));
     }

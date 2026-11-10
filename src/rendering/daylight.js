@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { DAYLIGHT, timeOfDay } from '../application/time-of-day.js';
+import { applyNightTint, NIGHT_TINT } from '../night-color.js';
 
 // A single shadow map, plus a soft, shadowless eastern fill at dawn.
 export function createDaylight(scene, { shadows = true, sunPatch = true } = {}) {
@@ -60,14 +61,8 @@ export function createDaylight(scene, { shadows = true, sunPatch = true } = {}) 
   };
 }
 
-const navy = new THREE.Color('#8295d5');
+const navy = new THREE.Color(NIGHT_TINT);
 export function applyNightColor(color, mode) {
-  if (mode === 'night') {
-    const gray = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
-    color
-      .lerp(new THREE.Color().setRGB(gray, gray, gray), 0.72)
-      .multiply(navy)
-      .multiplyScalar(0.72);
-  }
+  if (mode === 'night') applyNightTint(color, navy);
   return color;
 }

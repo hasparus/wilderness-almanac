@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fixtures from './fixtures/generation-v10.json' with { type: 'json' };
+import { dressingFingerprint } from './dressing-fingerprint.js';
 import { createTopology } from '../src/map-data.js';
 import { generateWorld, generateDressing, GENERATOR_VERSION } from '../src/generation/world.js';
 import { planSettlements, settlementSuitability } from '../src/generation/settlement-placement.js';
@@ -183,7 +184,7 @@ test('version 10 preserves captured world and dressing output', () => {
   for (const fixture of fixtures) {
     const world = generateWorld(fixture.seed, { preferences: fixture.preferences });
     assert.equal(digest(world), fixture.world);
-    assert.equal(digest(generateDressing(world, 2)), fixture.dressing);
+    assert.equal(dressingFingerprint(generateDressing(world, 2)), fixture.dressing);
   }
   for (const generatorVersion of [6, 7, 8, 9, 11])
     assert.throws(() => generateWorld('7', { generatorVersion }), /unsupported/);

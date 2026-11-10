@@ -39,6 +39,7 @@ export function createMapRenderer(
 ) {
   artStyle = mapArtStyle(artStyle);
   const loading = /** @type {HTMLElement | null} */ (host.querySelector('#hp-loading'));
+  const hasLoadingBackdrop = Boolean(loading?.querySelector('.hp-map-skeleton'));
   /** @type {THREE.WebGLRenderer} */
   let renderer;
   try {
@@ -193,6 +194,13 @@ export function createMapRenderer(
     party?.render(renderer, controls.camera);
     keyHints?.render(controls.camera);
     builds.afterRender?.(performance.now());
+    if (
+      loading &&
+      !host.closest('[data-loading]') &&
+      !builds.animating?.() &&
+      renderer.domElement.dataset.renderState !== 'building'
+    )
+      loading.hidden = true;
     if (builds.animating?.()) draw();
   }
   const ambientLoop = createAmbientLoop({
@@ -201,7 +209,7 @@ export function createMapRenderer(
     draw,
     motion,
   });
-  if (loading) loading.hidden = true;
+  if (loading && !hasLoadingBackdrop) loading.hidden = true;
   return {
     setMotion: ambientLoop.setMotion,
     /** @param {THREE.ColorRepresentation | null} value */
@@ -280,11 +288,23 @@ export function createMapRenderer(
     },
     zoom: controls.zoom,
     pan: controls.pan,
-    snapshot() {
+    /** Composite the CSS background for campaign exports, without changing the live canvas.
+     * @param {{opaque?: boolean}} [options]
+     */
+    snapshot({ opaque = false } = {}) {
       builds.flush?.();
       needsRender = true;
       renderNow();
-      return renderer.domElement.toDataURL('image/png');
+      if (!opaque || !transparent) return renderer.domElement.toDataURL('image/png');
+      const image = document.createElement('canvas');
+      image.width = renderer.domElement.width;
+      image.height = renderer.domElement.height;
+      const context = image.getContext('2d', { alpha: false });
+      if (!context) throw new Error('Unable to create the map snapshot.');
+      context.fillStyle = new THREE.Color(backgroundColor ?? palette.background()).getStyle();
+      context.fillRect(0, 0, image.width, image.height);
+      context.drawImage(renderer.domElement, 0, 0);
+      return image.toDataURL('image/png');
     },
     /** @param {import('./map-renderer-types.js').PaletteSeeds} seeds */
     setPalette(seeds) {

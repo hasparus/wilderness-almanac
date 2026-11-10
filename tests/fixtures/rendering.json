@@ -6,7 +6,7 @@
     "expected": {
       "meshes": 893,
       "vertices": 1603453,
-      "digest": "d7110f6814920514ed9a4aa4c74ccf21bfecd7c3bd692ea9430baabbfd6656d5"
+      "digest": "010bbbeade0f384ab007deb11f853c7bb6ec17a9550998e19b863b906700469b"
     }
   },
   {
@@ -16,7 +16,7 @@
     "expected": {
       "meshes": 999,
       "vertices": 1316372,
-      "digest": "16d07271dfbf158dc06d4d09c87a5b76ef19a5fca21d5c9a35bcc4bc2c6db11a"
+      "digest": "0d62eea0d6987ff04128546ae2d7f64b5cdbfc03d472d8db10792ad5cbc17e41"
     }
   },
   {
@@ -26,7 +26,7 @@
     "expected": {
       "meshes": 886,
       "vertices": 962404,
-      "digest": "af93e58dcd986a5f50e5fb4c5ed3a7d61e44ee2441cfffd2af3daf1fe94d7b1a"
+      "digest": "9fd701da2ef254f0e7d8da14e6cf1f478e73dc548ab7e385f6f8b24b4036c3f5"
     }
   }
 ]

@@ -10,7 +10,12 @@ export { createMapRenderer };
  * @param {Parameters<typeof createMapRenderer>[1]} [options]
  */
 export function createCampaignMapRenderer(host, options) {
-  return createMapRenderer(host, { ...options, createBuilds: createIncrementalMapBuilds });
+  const renderer = createMapRenderer(host, {
+    ...options,
+    transparent: true,
+    createBuilds: createIncrementalMapBuilds,
+  });
+  return renderer && { ...renderer, snapshot: () => renderer.snapshot({ opaque: true }) };
 }
 export { tilePreview, partyPreview, disposeTilePreview } from './tile-preview.js';
 export { partyColor } from '../rendering/party-color.js';

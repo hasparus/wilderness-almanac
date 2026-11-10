@@ -1,6 +1,9 @@
+// @ts-check
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { campaignUITheme } from '../src/ui/campaign-theme.js';
+import { campaignMapBackground, campaignUITheme } from '../src/ui/campaign-theme.js';
+import { Color } from 'three';
+import { applyNightColor } from '../src/rendering/daylight.js';
 import { readUITheme, UI_THEME_KEY } from '../src/ui/theme.js';
 import {
   palettes,
@@ -42,10 +45,40 @@ test('both UI schemes keep text readable across bundled and extreme custom palet
   }
 });
 
+test('the shared numeric night tint exactly preserves the original Three.js calculation', () => {
+  const navy = new Color('#8295d5');
+  for (const hex of Object.values(palettes).flat()) {
+    const expected = new Color(hex);
+    const gray = expected.r * 0.2126 + expected.g * 0.7152 + expected.b * 0.0722;
+    expected
+      .lerp(new Color().setRGB(gray, gray, gray), 0.72)
+      .multiply(navy)
+      .multiplyScalar(0.72);
+    assert.deepEqual(applyNightColor(new Color(hex), 'night'), expected);
+  }
+});
+
+test('pre-render background matches the renderer in every lighting mode and UI scheme', () => {
+  const extremes = ['#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff'];
+  const palettesToCheck = [
+    ...Object.values(palettes),
+    ...extremes.map((color) => [color, color, color]),
+  ];
+  for (const seeds of palettesToCheck) {
+    for (const mode of ['dawn', 'day', 'dusk', 'night']) {
+      assert.equal(
+        campaignMapBackground(seeds, mode, 'dark'),
+        '#' + applyNightColor(new Color(createColorScale(seeds).background()), mode).getHexString(),
+      );
+      assert.equal(campaignMapBackground(seeds, mode, 'light'), campaignUITheme(seeds, 'light').bg);
+    }
+  }
+});
+
 test('UI theme defaults to dark, validates choices and tolerates unavailable storage', () => {
   for (const saved of ['light', 'dark', 'system', '', null]) {
     const storage = {
-      getItem: (key) => {
+      getItem: (/** @type {string} */ key) => {
         assert.equal(key, UI_THEME_KEY);
         return saved;
       },

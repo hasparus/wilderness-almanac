@@ -26,7 +26,7 @@ export function createCampaignLoadingShell(workspace) {
     finish() {
       delete workspace.dataset.loading;
       workspace.removeAttribute('aria-busy');
-      loading.hidden = true;
+      if (!workspace.querySelector('canvas[aria-busy="true"]')) loading.hidden = true;
     },
   };
 }

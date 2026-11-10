@@ -1,7 +1,7 @@
 import { generateWorld, GENERATOR_VERSION } from './generation/world.js';
 import { prepareMap } from './generation/presentation.js';
 import { palettes, paletteNames, DEFAULT_PALETTE } from './palette.js';
-import { campaignUITheme } from './ui/campaign-theme.js';
+import { campaignMapBackground, campaignUITheme } from './ui/campaign-theme.js';
 import { createUITheme } from './ui/theme.js';
 import { readUIPreferences, saveUIPreferences } from './ui/ui-preferences.js';
 import { createBrowserStore } from './persistence/browser-store.js';
@@ -67,6 +67,8 @@ const freshSeed = () =>
     part.toString(16).padStart(8, '0'),
   ).join('-');
 const initialColors = linked.colors ?? saved.colors ?? palettes[DEFAULT_PALETTE].slice();
+/** @type {ReturnType<typeof createCampaign> | undefined} */
+let openingCampaign;
 const paletteLibrary = createPaletteLibrary(saved);
 const savedPalettes = paletteLibrary.custom;
 let layout;
@@ -255,6 +257,8 @@ async function openCampaign(campaign, { fromHistory = false, baseWorld } = {}) {
     const opened = await navigation.show(
       'forward',
       () => {
+        openingCampaign = campaign;
+        applyWorkspaceTheme();
         loadingShell.show(campaign.name);
         deferredMapWork.clear();
         iconCacheRevision++;
@@ -293,6 +297,8 @@ async function openCampaign(campaign, { fromHistory = false, baseWorld } = {}) {
     document.title = 'The Wilderness Almanac';
     throw error;
   } finally {
+    openingCampaign = undefined;
+    applyWorkspaceTheme();
     loadingShell.finish();
   }
 }
@@ -483,10 +489,15 @@ function updatePaletteOptions() {
 }
 
 function applyWorkspaceTheme() {
-  const colors = session.snapshot()?.campaign.colors ?? initialColors;
+  const campaign = openingCampaign ?? session.snapshot()?.campaign;
+  const colors = campaign?.colors ?? initialColors;
   const { panel, ...roles } = campaignUITheme(colors, document.documentElement.dataset.theme);
   for (const [role, value] of Object.entries(roles)) root.style.setProperty(`--hp-${role}`, value);
   root.style.setProperty('--hp-panel-bg', panel);
+  root.style.setProperty(
+    '--hp-map-bg',
+    campaignMapBackground(colors, campaign?.timeOfDay, document.documentElement.dataset.theme),
+  );
   renderer?.setBackground(document.documentElement.dataset.theme === 'light' ? roles.bg : null);
   campaignCreator?.refreshTheme();
 }
@@ -574,6 +585,7 @@ function syncTimeOfDay() {
     );
   renderer?.setTimeOfDay(value);
   root.dataset.timeOfDay = value;
+  applyWorkspaceTheme();
 }
 listen(element('time-of-day'), 'click', () => {
   handleAction(session.setTimeOfDay(nextTimeOfDay(session.snapshot().campaign.timeOfDay)));
